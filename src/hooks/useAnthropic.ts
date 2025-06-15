@@ -27,6 +27,7 @@ export const useAnthropic = () => {
         
         try {
           const walletData = await analyzeWallet(address);
+          console.log('[Debug Anthropic] Received walletData from useAlchemy:', JSON.stringify(walletData, null, 2));
           
           if (walletData) {
             console.log('Wallet analysis successful:', walletData);
@@ -37,6 +38,25 @@ export const useAnthropic = () => {
                   return `• ${token.symbol || 'Unknown'}: ${balance.toFixed(6)}`;
                 }).join('\n')
               : '• No significant token balances found';
+
+            let adviceNote = "";
+            const isEthZero = parseFloat(walletData.ethBalance) === 0;
+            const isTxCountZero = walletData.transactionCount === 0;
+            // Check if a significant number of tokens are missing symbols.
+            // This is a heuristic: more than half, or if there's at least one token and it's missing.
+            const unknownTokenCount = walletData.tokenBalances.filter(t => t.symbol === '[Symbol Missing]').length;
+            const hasMostlyUnknownTokens = walletData.tokenBalances.length > 0 &&
+                                         (unknownTokenCount === walletData.tokenBalances.length || unknownTokenCount > walletData.tokenBalances.length / 2);
+
+            if (isEthZero && isTxCountZero && (walletData.tokenBalances.length === 0 || hasMostlyUnknownTokens)) {
+              adviceNote = `
+
+⚠️ **Note:** The data for this wallet appears limited or may be showing default values. This could be due to several reasons:
+        • The wallet address might be new, inactive on the Base network, or not yet indexed.
+        • If you've entered your own Alchemy API key, please ensure it's correctly configured for Base Mainnet and has the necessary permissions for fetching balances and transaction history.
+        • There might be temporary network or API provider issues.
+      Please double-check the wallet address and your API key settings.`;
+            }
 
             return `🔍 **Wallet Analysis for ${address}**
 
@@ -53,7 +73,7 @@ ${tokenList}
 • ETH balance suggests ${parseFloat(walletData.ethBalance) > 0.1 ? 'active user with significant holdings' : parseFloat(walletData.ethBalance) > 0.01 ? 'moderate ETH holdings' : 'minimal ETH holdings'}
 • ${walletData.tokenBalances.length > 0 ? 'Holds multiple tokens indicating DeFi participation' : 'Primarily holds ETH with no significant token holdings'}
 
-Would you like me to analyze specific transactions, DeFi positions, or provide more detailed insights for this wallet?`;
+Would you like me to analyze specific transactions, DeFi positions, or provide more detailed insights for this wallet?${adviceNote}`;
           } else {
             return `❌ Unable to retrieve data for wallet ${address}. The wallet may be empty or there might be an API issue.`;
           }

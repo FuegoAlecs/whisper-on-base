@@ -46,6 +46,7 @@ export const useAlchemy = () => {
     } else {
         console.log('localStorage not available, using default API key.');
     }
+    console.log('[Debug Alchemy] Using effectiveApiKey:', effectiveApiKey);
 
     try {
       const apiKey = config?.apiKey || effectiveApiKey;
@@ -57,18 +58,21 @@ export const useAlchemy = () => {
       console.log('Using API endpoint:', baseUrl);
 
       // Get ETH balance
+      const ethBalancePayload = {
+        jsonrpc: '2.0',
+        id: 1,
+        method: 'eth_getBalance',
+        params: [address, 'latest']
+      };
+      console.log('[Debug Alchemy] eth_getBalance request:', JSON.stringify(ethBalancePayload));
       const ethBalanceResponse = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 1,
-          method: 'eth_getBalance',
-          params: [address, 'latest']
-        })
+        body: JSON.stringify(ethBalancePayload)
       });
 
       const ethData = await ethBalanceResponse.json();
+      console.log('[Debug Alchemy] eth_getBalance raw response:', JSON.stringify(ethData));
       console.log('ETH balance response:', ethData);
       
       if (ethData.error) {
@@ -78,33 +82,39 @@ export const useAlchemy = () => {
       const ethBalance = parseInt(ethData.result, 16) / Math.pow(10, 18);
 
       // Get token balances
+      const tokenPayload = {
+        jsonrpc: '2.0',
+        id: 2,
+        method: 'alchemy_getTokenBalances',
+        params: [address]
+      };
+      console.log('[Debug Alchemy] alchemy_getTokenBalances request:', JSON.stringify(tokenPayload));
       const tokenResponse = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 2,
-          method: 'alchemy_getTokenBalances',
-          params: [address]
-        })
+        body: JSON.stringify(tokenPayload)
       });
 
       const tokenData = await tokenResponse.json();
+      console.log('[Debug Alchemy] alchemy_getTokenBalances raw response:', JSON.stringify(tokenData));
       console.log('Token balance response:', tokenData);
 
       // Get transaction count
+      const txCountPayload = {
+        jsonrpc: '2.0',
+        id: 3,
+        method: 'eth_getTransactionCount',
+        params: [address, 'latest']
+      };
+      console.log('[Debug Alchemy] eth_getTransactionCount request:', JSON.stringify(txCountPayload));
       const txCountResponse = await fetch(baseUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jsonrpc: '2.0',
-          id: 3,
-          method: 'eth_getTransactionCount',
-          params: [address, 'latest']
-        })
+        body: JSON.stringify(txCountPayload)
       });
 
       const txData = await txCountResponse.json();
+      console.log('[Debug Alchemy] eth_getTransactionCount raw response:', JSON.stringify(txData));
       console.log('Transaction count response:', txData);
 
       // Check if address is a contract
@@ -130,8 +140,8 @@ export const useAlchemy = () => {
           .map((token: any) => ({
             contractAddress: token.contractAddress,
             tokenBalance: parseInt(token.tokenBalance, 16).toString(),
-            name: token.name || 'Unknown Token',
-            symbol: token.symbol || 'UNKNOWN',
+            name: token.name || '[Name Missing]',
+            symbol: token.symbol || '[Symbol Missing]',
             decimals: token.decimals || 18
           }));
       }
