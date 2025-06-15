@@ -8,6 +8,8 @@ import LoadingMessage from "./LoadingMessage";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 
+const CHAT_HISTORY_KEY = 'chatHistory';
+
 interface Message {
   id: string;
   text: string;
@@ -15,9 +17,23 @@ interface Message {
   timestamp: string;
 }
 
-const ChatWindow = () => {
+interface Conversation {
+  id: string;
+  messages: Message[];
+  timestamp: number;
+  title?: string;
+}
+
+interface ChatWindowProps {
+  loadConversationId?: string | null;
+  onConversationLoaded?: () => void;
+  // Add other props if ChatWindow expects any, e.g., isSidebarOpen, toggleSidebar
+}
+
+const ChatWindow = ({ loadConversationId, onConversationLoaded }: ChatWindowProps) => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
@@ -30,8 +46,28 @@ const ChatWindow = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
+  useEffect(() => {
+    if (loadConversationId) {
+      const history: Conversation[] = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]');
+      const conversationToLoad = history.find(conv => conv.id === loadConversationId);
+      if (conversationToLoad) {
+        setMessages(conversationToLoad.messages);
+        setCurrentConversationId(conversationToLoad.id);
+      }
+      if (onConversationLoaded) {
+        onConversationLoaded(); // Notify parent to reset the trigger
+      }
+    }
+  }, [loadConversationId, onConversationLoaded]);
+
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
+
+    // If messages array is currently empty, this is the start of a new chat session.
+    // Reset currentConversationId to ensure it's treated as a new conversation.
+    if (messages.length === 0) {
+      setCurrentConversationId(null);
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -64,10 +100,78 @@ const ChatWindow = () => {
         timestamp: new Date().toLocaleTimeString()
       };
       
-      setMessages(prev => [...prev, aiMessage]);
+      // Update messages state and then save
+      setMessages(prevMessages => {
+        const newMessages = [...prevMessages, aiMessage];
+
+        // Save conversation to localStorage
+        try {
+          const history: Conversation[] = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]');
+          let conversationSaved = false;
+
+          if (currentConversationId) {
+            const existingConvIndex = history.findIndex(conv => conv.id === currentConversationId);
+            if (existingConvIndex !== -1) {
+              history[existingConvIndex].messages = newMessages; // Use newMessages
+              history[existingConvIndex].timestamp = Date.now();
+              conversationSaved = true;
+            }
+          }
+
+          if (!conversationSaved) { // New conversation or ID mismatch
+            const newId = currentConversationId || Date.now().toString();
+            if (!currentConversationId) {
+              setCurrentConversationId(newId); // Set new ID for this session
+            }
+            const newConversation: Conversation = {
+              id: newId,
+              messages: newMessages, // Use newMessages
+              timestamp: Date.now(),
+              title: newMessages[0]?.text.substring(0, 30) + (newMessages[0]?.text.length > 30 ? '...' : '') || "New Chat"
+            };
+            history.push(newConversation);
+          }
+
+          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
+        } catch (e) {
+          console.error("Failed to save chat history:", e);
+          // Optionally notify user
+        }
+        return newMessages; // Return newMessages for the state update
+      });
+
     } catch (error) {
       console.error('Error sending message:', error);
+      // Restore messages to pre-send state if AI call fails? Or just leave user message?
+      // For now, user message remains, AI message is not added.
+      // Consider how to handle currentConversationId if this was meant to be a new chat that failed on first AI message.
+      // For simplicity, current error handling only shows a toast.
       toast({
+        let conversationSaved = false;
+
+        if (currentConversationId) {
+          const existingConvIndex = history.findIndex(conv => conv.id === currentConversationId);
+          if (existingConvIndex !== -1) {
+            history[existingConvIndex].messages = updatedMessages;
+            history[existingConvIndex].timestamp = Date.now();
+            conversationSaved = true;
+          }
+        }
+
+        if (!conversationSaved) { // New conversation or ID mismatch (shouldn't happen if ID is set right)
+          const newId = currentConversationId || Date.now().toString();
+          if (!currentConversationId) {
+            setCurrentConversationId(newId);
+          }
+          const newConversation: Conversation = {
+            id: newId,
+            messages: updatedMessages,
+            timestamp: Date.now(),
+            title: updatedMessages[0]?.text.substring(0, 30) + (updatedMessages[0]?.text.length > 30 ? '...' : '') || "New Chat"
+          };
+          history.push(newConversation);
+        }
+
         title: "Connection Issue",
         description: "There was a problem processing your message. Please try again!",
         variant: "default",
@@ -87,7 +191,7 @@ const ChatWindow = () => {
       <div className="flex flex-col flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 space-y-2 sm:space-y-4">
         {messages.length === 0 && (
           <div className="flex flex-col justify-center items-center h-full px-2 sm:px-4">
-            <div className="mb-3 sm:mb-6 text-center"> {/* Added text-center here for the inner content */}
+            <div className="mb-3 sm:mb-6 text-center">
               <Sparkles className="h-6 w-6 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-2 sm:mb-4" />
               <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Hi, I'm ChainWhisper</h3>
               <p className="text-gray-400 text-xs sm:text-base">Your AI oracle for Base network data</p>
@@ -100,7 +204,7 @@ const ChatWindow = () => {
         
         {messages.map((message) => (
           <ChatMessage
-            key={message.id}
+            key={message.id} // Ensure unique keys, especially if IDs can repeat across reloads initially
             message={message.text}
             isUser={message.isUser}
             timestamp={message.timestamp}

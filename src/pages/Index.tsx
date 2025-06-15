@@ -7,14 +7,30 @@ import { useState } from "react";
 
 const Index = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [conversationToLoadId, setConversationToLoadId] = useState<string | null>(null);
+
+  const handleRequestLoadConversation = (conversationId: string) => {
+    setConversationToLoadId(conversationId);
+    // Optional: Close sidebar on mobile after selecting a chat
+    if (window.innerWidth < 1024) { // lg breakpoint
+      setSidebarOpen(false);
+    }
+  };
+
+  const handleConversationLoaded = () => {
+    setConversationToLoadId(null);
+  };
 
   return (
-    <div className="min-h-screen flex flex-col bg-gray-950">
+    <div className="min-h-screen flex flex-col bg-gray-950"> {/* Ensure this uses bg-background if theme changes */}
       <Header onSidebarToggle={() => setSidebarOpen(!sidebarOpen)} />
       
       <div className="flex-1 flex overflow-hidden relative">
         <main className="flex-1 flex flex-col min-w-0">
-          <ChatWindow />
+          <ChatWindow
+            loadConversationId={conversationToLoadId}
+            onConversationLoaded={handleConversationLoaded}
+          />
         </main>
         
         {/* Mobile Sidebar Overlay */}
@@ -31,8 +47,11 @@ const Index = () => {
           lg:relative lg:w-80 lg:translate-x-0 lg:block
           ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         `}>
-          <div className="h-full mt-12 sm:mt-14 lg:mt-16 mb-12 sm:mb-14 lg:mb-16">
-            <Sidebar onClose={() => setSidebarOpen(false)} />
+          <div className="h-full mt-12 sm:mt-14 lg:mt-16 mb-12 sm:mb-14 lg:mb-16"> {/* Consider if mt/mb needs adjustment for header/footer */}
+            <Sidebar
+              onClose={() => setSidebarOpen(false)}
+              requestLoadConversation={handleRequestLoadConversation}
+            />
           </div>
         </aside>
       </div>
