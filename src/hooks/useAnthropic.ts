@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "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";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
 // Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
@@ -158,27 +158,27 @@ This could be due to:
 
 Please verify the address and try again. I can help with other Base blockchain analysis in the meantime!`;
         }
-      }
+      } else {
+      // NEW LOGIC FOR GENERAL QUERIES:
+      console.log("[Debug Groq] No wallet address detected. Routing general query to Groq.");
+      const userQuery = messages[messages.length - 1].content; // Get the full user query
+
+      const generalQuerySystemPrompt = "You are ChainWhisper, an AI assistant knowledgeable about the Base blockchain and general crypto concepts. The user has a general question. Please answer conversationally and helpfully. If the question asks for specific, real-time, aggregate on-chain statistics you don't have direct access to (e.g., 'how many NFTs were minted today across the whole network?'), politely explain your current primary capability is analyzing specific wallet addresses when provided, and that you can answer conceptual questions, but you cannot provide that specific live aggregate statistic. You can offer to analyze a specific address if the user provides one.";
       
-      // Keep existing conversation patterns
-      if (lowerMessage.includes('hi') || lowerMessage.includes('hello')) {
-        return "Hello! I'm ChainWhisper, your AI assistant for Base network analysis. I can help you with wallet activity, NFT data, DeFi protocols, and on-chain analytics. What would you like to explore?";
-      }
-      
-      if (lowerMessage.includes('base') && (lowerMessage.includes('defi') || lowerMessage.includes('activity'))) {
-        return "I'd love to help you analyze Base DeFi activity! I can provide insights on:\n\n• Total Value Locked (TVL) across protocols\n• Recent transaction volumes\n• Top performing DeFi protocols\n• Yield farming opportunities\n• Liquidity pool analysis\n\nWhat specific aspect of Base DeFi would you like me to investigate?";
-      }
-      
-      if (lowerMessage.includes('nft') || lowerMessage.includes('mint')) {
-        return "I can analyze NFT activity on Base! Here's what I can help with:\n\n• Top minting wallets and volumes\n• Popular NFT collections\n• Minting trends and patterns\n• Wallet behavior analysis\n• Gas optimization for minting\n\nWhat specific NFT data are you looking for?";
-      }
-      
-      if (lowerMessage.includes('wallet') && !walletAddressMatch) {
-        return "I can analyze wallet activity on Base! I can provide:\n\n• Transaction history and patterns\n• Token holdings and transfers\n• DeFi protocol interactions\n• NFT collections owned\n• Risk assessment and scoring\n\nPlease share a wallet address (starting with 0x) that you'd like me to analyze!";
-      }
-      
-      // Default response for Base-related queries
-      return `I understand you're asking about: "${userMessage}"\n\nAs ChainWhisper, I specialize in Base network analysis. I can help with wallet tracking, DeFi analytics, NFT data, gas optimization, and on-chain investigations.\n\nCould you be more specific about what data or analysis you're looking for? For example:\n• A specific wallet address to analyze (0x...)\n• DeFi protocol performance\n• NFT collection statistics\n• Transaction patterns`;
+      const promptForGeneralQuery = `
+System: ${generalQuerySystemPrompt}
+
+User: My question is: "${userQuery}"
+`;
+      // console.log("[Debug Groq] General Query Prompt:", promptForGeneralQuery); // Optional for debugging
+
+      // It's important to call setIsLoading(true) here if it wasn't set at the start of sendMessage for all paths.
+      // Assuming setIsLoading(true) is already called at the beginning of sendMessage.
+      // If not, it should be: setIsLoading(true);
+
+      const aiResponse = await callGroqAPI(promptForGeneralQuery); // Use existing callGroqAPI
+      return aiResponse;
+    }
       
     } catch (error) {
       console.error('Chat error:', error);
