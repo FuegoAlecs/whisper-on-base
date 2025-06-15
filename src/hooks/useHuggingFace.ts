@@ -16,8 +16,8 @@ export const useHuggingFace = () => {
       // Use your provided API key as default
       const token = apiKey || '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';
       
-      // Use the free Hugging Face Inference API
-      const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
+      // Use a working text generation model
+      const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,16 +26,17 @@ export const useHuggingFace = () => {
         body: JSON.stringify({
           inputs: messages[messages.length - 1].content,
           parameters: {
-            max_length: 1000,
+            max_length: 100,
             temperature: 0.7,
+            do_sample: true,
             return_full_text: false
           }
         }),
       });
 
       if (!response.ok) {
-        // If the first model fails, try a backup model
-        const backupResponse = await fetch('https://api-inference.huggingface.co/models/facebook/blenderbot-400M-distill', {
+        // If the first model fails, try a different backup model
+        const backupResponse = await fetch('https://api-inference.huggingface.co/models/gpt2', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -43,6 +44,11 @@ export const useHuggingFace = () => {
           },
           body: JSON.stringify({
             inputs: messages[messages.length - 1].content,
+            parameters: {
+              max_length: 100,
+              temperature: 0.7,
+              return_full_text: false
+            }
           }),
         });
 
