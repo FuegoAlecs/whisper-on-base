@@ -52,7 +52,7 @@ interface TopTradingPairData {
   pairUrl: string;
 }
 
-const ALCHEMY_API_KEY = 'jFa3wNWqfvKYb9GrCUtmk';
+const FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER = "YOUR_ACTUAL_ALCHEMY_KEY_FOR_LOCAL_TESTING_ONLY_NEVER_COMMIT_A_REAL_KEY";
 
 export const useAlchemy = () => {
   const [isLoading, setIsLoading] = useState(false);
@@ -64,7 +64,7 @@ export const useAlchemy = () => {
 
     setIsLoading(true);
 
-    let effectiveApiKey = ALCHEMY_API_KEY; // Default to hardcoded key
+    let effectiveApiKey = FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER; // Default to hardcoded key
     if (typeof window !== 'undefined') { // Check if localStorage is available
         const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
         if (storedKey && storedKey.trim() !== '') {
@@ -258,7 +258,7 @@ export const useAlchemy = () => {
 
   const getCurrentGasPrice = async (): Promise<string | null> => {
     setIsLoading(true);
-    let currentApiKey = ALCHEMY_API_KEY; // Fallback, consistent with other functions
+    let currentApiKey = FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER; // Fallback, consistent with other functions
     if (typeof window !== 'undefined') {
        const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
        if (storedKey && storedKey.trim() !== '') {
@@ -313,7 +313,7 @@ export const useAlchemy = () => {
 
   const getLatestBlockNumber = async (): Promise<string | null> => {
     setIsLoading(true);
-    let currentApiKey = ALCHEMY_API_KEY; // Fallback
+    let currentApiKey = FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER; // Fallback
     if (typeof window !== 'undefined') {
        const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
        if (storedKey && storedKey.trim() !== '') {
@@ -373,9 +373,9 @@ export const useAlchemy = () => {
     // For simplicity, let's re-fetch or assume effectiveApiKey is available from hook's scope.
     // This part might need refinement based on how API key is managed across hook functions.
     // For now, assume 'effectiveApiKey' is accessible from the outer scope of useAlchemy or re-evaluate it.
-    // Let's use a simplified key access for this subtask, assuming ALCHEMY_API_KEY exists.
+    // Let's use a simplified key access for this subtask, assuming FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER exists.
     // A more robust solution would pass the key or ensure it's consistently derived.
-    let currentApiKey = ALCHEMY_API_KEY; // Fallback, ideally use the same logic as analyzeWallet
+    let currentApiKey = FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER; // Fallback, ideally use the same logic as analyzeWallet
     if (typeof window !== 'undefined') {
        const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
        if (storedKey && storedKey.trim() !== '') {

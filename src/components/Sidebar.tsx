@@ -28,32 +28,36 @@ const Sidebar = ({ onClose }: SidebarProps) => {
   useEffect(() => {
     let isMounted = true; // To prevent state updates on unmounted component
     const fetchNetworkData = async () => {
+      console.log("[Sidebar Effect] Fetching network data...");
       try {
         const latestBlock = await getLatestBlockNumber();
+        console.log("[Sidebar Effect] getLatestBlockNumber returned:", latestBlock);
         if (isMounted && latestBlock) {
           setBlockNumber(latestBlock);
           setBlockTrend(""); // Clear mock trend
         }
       } catch (error) {
         if (isMounted) {
-          console.error("Failed to fetch block for sidebar:", error);
+          console.error("[Sidebar Effect] Error fetching block for sidebar:", error);
           setBlockNumber("Error"); setBlockTrend("");
         }
       }
       try {
         const currentGas = await getCurrentGasPrice();
+        console.log("[Sidebar Effect] getCurrentGasPrice returned:", currentGas);
         if (isMounted && currentGas) {
           setGasPrice(currentGas);
           setGasPriceTrend(""); // Clear mock trend
         }
       } catch (error) {
         if (isMounted) {
-          console.error("Failed to fetch gas for sidebar:", error);
+          console.error("[Sidebar Effect] Error fetching gas for sidebar:", error);
           setGasPrice("Error"); setGasPriceTrend("");
         }
       }
       try {
         const mints = await getRecentNftMints({ limit: 3 }); // Fetch 3 recent mints
+        console.log("[Sidebar Effect] getRecentNftMints returned raw:", mints);
         if (isMounted && mints && mints.length > 0) {
           const formattedMints = mints.map(mint => {
             let title = "New NFT Mint";
@@ -88,13 +92,14 @@ const Sidebar = ({ onClose }: SidebarProps) => {
               key: mint.transactionHash || `mint-${mint.nftContractAddress}-${mint.tokenId}-${Math.random()}`
             };
           });
+          console.log("[Sidebar Effect] Formatted NFT Mint Activities for state:", formattedMints);
           setNftMintActivities(formattedMints);
         } else if (isMounted) {
           setNftMintActivities([]); // Clear if no mints or error
         }
       } catch (error) {
         if (isMounted) {
-          console.error("Failed to fetch NFT mints for sidebar:", error);
+          console.error("[Sidebar Effect] Error fetching/formatting NFT mints for sidebar:", error);
           setNftMintActivities([]); // Clear on error
         }
       }
@@ -102,6 +107,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     fetchNetworkData();
     return () => { isMounted = false; }; // Cleanup
   }, [getLatestBlockNumber, getCurrentGasPrice, getRecentNftMints]);
+
+  useEffect(() => {
+    console.log("[Sidebar State] nftMintActivities updated:", nftMintActivities);
+  }, [nftMintActivities]);
 
   const recentActivity = [
     { type: "nft", title: "BasePunks surge detected", summary: "234 NFTs minted in last 10 minutes", time: "2m ago" },
@@ -119,6 +128,10 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       default: return "⚡";
     }
   };
+
+  const nonNftMockedActivity = recentActivity.filter(act => act.type !== 'nft');
+  const combinedActivity = [...nftMintActivities, ...nonNftMockedActivity].slice(0, 4);
+  console.log("[Sidebar Render] combinedActivity before map:", combinedActivity);
 
   return (
     <div className="w-full h-full border-l border-gray-800 bg-gray-950/95 backdrop-blur-sm overflow-y-auto">
@@ -186,7 +199,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
             Recent Activity
           </h3>
           <div className="space-y-2 sm:space-y-3">
-            {[...nftMintActivities, ...recentActivity.filter(act => act.type !== 'nft')].slice(0, 4).map((activity) => (
+            {combinedActivity.map((activity) => (
               <Card key={activity.key || activity.title} className="bg-gray-900/30 border-gray-800 p-2 sm:p-3 lg:p-4 hover:bg-gray-800/50 transition-colors cursor-pointer">
                 <div className="flex items-start gap-2 sm:gap-3">
                   <span className="text-sm sm:text-base lg:text-lg">{getActivityIcon(activity.type)}</span>
