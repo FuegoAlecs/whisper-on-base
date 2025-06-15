@@ -6,7 +6,6 @@ import { Send, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import QueryExamples from "./QueryExamples";
-import ApiKeyInput from "./ApiKeyInput";
 import { useOpenAI } from "@/hooks/useOpenAI";
 import { useToast } from "@/hooks/use-toast";
 
@@ -20,19 +19,12 @@ interface Message {
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
-  const [apiKey, setApiKey] = useState("");
-  const [showApiKeyInput, setShowApiKeyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useOpenAI();
   const { toast } = useToast();
 
-  useEffect(() => {
-    const savedApiKey = localStorage.getItem('chainwhisper_openai_key');
-    if (savedApiKey) {
-      setApiKey(savedApiKey);
-      setShowApiKeyInput(false);
-    }
-  }, []);
+  // Use the provided API key directly
+  const apiKey = "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";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -42,27 +34,8 @@ const ChatWindow = () => {
     scrollToBottom();
   }, [messages, isLoading]);
 
-  const handleApiKeySubmit = (key: string) => {
-    setApiKey(key);
-    setShowApiKeyInput(false);
-    toast({
-      title: "API Key Connected",
-      description: "You can now chat with ChainWhisper AI!",
-    });
-  };
-
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
-
-    if (!apiKey) {
-      setShowApiKeyInput(true);
-      toast({
-        title: "API Key Required",
-        description: "Please enter your OpenAI API key to continue.",
-        variant: "destructive",
-      });
-      return;
-    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
@@ -77,12 +50,12 @@ const ChatWindow = () => {
 
     try {
       const conversationHistory = messages.map(msg => ({
-        role: msg.isUser ? 'user' : 'assistant' as const,
+        role: (msg.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
         content: msg.text
       }));
 
       conversationHistory.push({
-        role: 'user',
+        role: 'user' as const,
         content: currentInput
       });
 
@@ -100,7 +73,7 @@ const ChatWindow = () => {
       console.error('Error sending message:', error);
       toast({
         title: "Error",
-        description: "Failed to get AI response. Please check your API key and try again.",
+        description: "Failed to get AI response. Please try again.",
         variant: "destructive",
       });
     }
@@ -127,7 +100,7 @@ const ChatWindow = () => {
               <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Hi, I'm ChainWhisper</h3>
               <p className="text-gray-400 text-xs sm:text-base">Your AI oracle for Base network data</p>
             </div>
-            {!showApiKeyInput && <QueryExamples onExampleClick={handleExampleClick} />}
+            <QueryExamples onExampleClick={handleExampleClick} />
           </div>
         )}
         
@@ -144,37 +117,28 @@ const ChatWindow = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      {showApiKeyInput && (
-        <ApiKeyInput 
-          onApiKeySubmit={handleApiKeySubmit}
-          isVisible={showApiKeyInput}
-        />
-      )}
-
-      {!showApiKeyInput && (
-        <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-2 sm:p-4 lg:p-6">
-          <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto">
-            <div className="flex-1 relative">
-              <Input
-                value={inputValue}
-                onChange={(e) => setInputValue(e.target.value)}
-                onKeyPress={handleKeyPress}
-                placeholder="Ask a question about on-chain activity..."
-                className="bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg text-xs sm:text-base py-1.5 sm:py-3 lg:py-4 px-2 sm:px-4"
-                disabled={isLoading}
-              />
-            </div>
-            <Button
-              onClick={handleSend}
-              disabled={!inputValue.trim() || isLoading}
-              className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 rounded-lg transition-all duration-200 flex-shrink-0"
-            >
-              <Send className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
-              <span className="hidden sm:inline ml-2">Whisper</span>
-            </Button>
+      <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-2 sm:p-4 lg:p-6">
+        <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto">
+          <div className="flex-1 relative">
+            <Input
+              value={inputValue}
+              onChange={(e) => setInputValue(e.target.value)}
+              onKeyPress={handleKeyPress}
+              placeholder="Ask a question about on-chain activity..."
+              className="bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg text-xs sm:text-base py-1.5 sm:py-3 lg:py-4 px-2 sm:px-4"
+              disabled={isLoading}
+            />
           </div>
+          <Button
+            onClick={handleSend}
+            disabled={!inputValue.trim() || isLoading}
+            className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 rounded-lg transition-all duration-200 flex-shrink-0"
+          >
+            <Send className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
+            <span className="hidden sm:inline ml-2">Whisper</span>
+          </Button>
         </div>
-      )}
+      </div>
     </div>
   );
 };
