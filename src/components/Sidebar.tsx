@@ -1,9 +1,9 @@
-import { useEffect, useState } from 'react';
+// No useEffect, useState needed if chatHistory comes from props
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Clock, MessageSquareText, X } from "lucide-react"; // Using MessageSquareText for history icon
+import { Clock, MessageSquareText, X } from "lucide-react";
 
-const CHAT_HISTORY_KEY = 'chatHistory';
+// CHAT_HISTORY_KEY removed
 
 interface ConversationSummary {
   id: string;
@@ -11,17 +11,12 @@ interface ConversationSummary {
   timestamp: number;
 }
 
-// Interface for the full conversation structure stored in localStorage
-interface StoredConversation {
-  id: string;
-  messages: Array<{ text: string; isUser: boolean; [key: string]: any }>; // Simplified message structure for summary
-  timestamp: number;
-  title?: string;
-}
+// StoredConversation interface removed
 
 interface SidebarProps {
   onClose: () => void;
-  requestLoadConversation: (conversationId: string) => void;
+  chatHistory: ConversationSummary[]; // Expect summarized history from props
+  onSelectChat: (conversationId: string) => void; // New prop for callback
 }
 
 const formatTimestamp = (timestamp: number): string => {
@@ -37,31 +32,9 @@ const formatTimestamp = (timestamp: number): string => {
   return date.toLocaleDateString([], { month: 'short', day: 'numeric' });
 };
 
-const Sidebar = ({ onClose, requestLoadConversation }: SidebarProps) => {
-  const [chatHistory, setChatHistory] = useState<ConversationSummary[]>([]);
-
-  useEffect(() => {
-    const storedHistory = localStorage.getItem(CHAT_HISTORY_KEY);
-    if (storedHistory) {
-      try {
-        const conversations: StoredConversation[] = JSON.parse(storedHistory);
-        // Sort by timestamp descending (most recent first)
-        conversations.sort((a, b) => b.timestamp - a.timestamp);
-        setChatHistory(conversations.map(conv => ({
-          id: conv.id,
-          title: conv.title || (conv.messages[0]?.text.substring(0, 30) + (conv.messages[0]?.text.length > 30 ? '...' : '')) || 'Untitled Chat',
-          timestamp: conv.timestamp,
-        })));
-      } catch (error) {
-        console.error("Error parsing chat history from localStorage:", error);
-        setChatHistory([]); // Clear history if parsing fails
-      }
-    }
-    // TODO: Consider adding a listener for custom 'historyUpdated' event
-    // window.addEventListener('historyUpdated', loadHistoryFromStorage);
-    // return () => window.removeEventListener('historyUpdated', loadHistoryFromStorage);
-  }, []); // Empty dependency array means this runs once on mount
-
+// chatHistory state and useEffect for loading from localStorage are removed
+const Sidebar = ({ onClose, chatHistory, onSelectChat }: SidebarProps) => {
+  // The chatHistory prop is used directly for rendering
   return (
     <div className="w-full h-full border-l border-sidebar-border bg-sidebar backdrop-blur-sm overflow-y-auto">
       <div className="p-3 sm:p-4 lg:p-6 space-y-3 sm:space-y-4 lg:space-y-6">
@@ -83,11 +56,11 @@ const Sidebar = ({ onClose, requestLoadConversation }: SidebarProps) => {
 
         {/* Chat History List */}
         <div className="space-y-2 sm:space-y-3">
-          {chatHistory.length > 0 ? (
+          {chatHistory && chatHistory.length > 0 ? ( // Check props.chatHistory
             chatHistory.map((convSummary) => (
               <Card
                 key={convSummary.id}
-                onClick={() => requestLoadConversation(convSummary.id)}
+                onClick={() => onSelectChat(convSummary.id)} // Use onSelectChat prop
                 className="bg-sidebar-accent/30 border-sidebar-border p-2 sm:p-3 lg:p-4 hover:bg-sidebar-accent/50 transition-colors cursor-pointer"
               >
                 <div className="flex flex-col">

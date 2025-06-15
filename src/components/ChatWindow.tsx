@@ -8,7 +8,7 @@ import LoadingMessage from "./LoadingMessage";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 
-const CHAT_HISTORY_KEY = 'chatHistory';
+// No CHAT_HISTORY_KEY here anymore
 
 interface Message {
   id: string;
@@ -17,7 +17,8 @@ interface Message {
   timestamp: string;
 }
 
-interface Conversation {
+// Conversation interface might be defined in a shared types file if parent also uses it
+export interface ConversationData { // Export if parent needs this type
   id: string;
   messages: Message[];
   timestamp: number;
@@ -25,15 +26,20 @@ interface Conversation {
 }
 
 interface ChatWindowProps {
-  loadConversationId?: string | null;
-  onConversationLoaded?: () => void;
+  onSaveConversation: (conversation: ConversationData) => void;
+  initialMessages?: Message[] | null;
+  initialConversationId?: string | null;
   // Add other props if ChatWindow expects any, e.g., isSidebarOpen, toggleSidebar
 }
 
-const ChatWindow = ({ loadConversationId, onConversationLoaded }: ChatWindowProps) => {
-  const [messages, setMessages] = useState<Message[]>([]);
+const ChatWindow = ({
+  onSaveConversation,
+  initialMessages,
+  initialConversationId
+}: ChatWindowProps) => {
+  const [messages, setMessages] = useState<Message[]>(initialMessages || []);
   const [inputValue, setInputValue] = useState("");
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(initialConversationId || null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
@@ -47,131 +53,93 @@ const ChatWindow = ({ loadConversationId, onConversationLoaded }: ChatWindowProp
   }, [messages, isLoading]);
 
   useEffect(() => {
-    if (loadConversationId) {
-      const history: Conversation[] = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]');
-      const conversationToLoad = history.find(conv => conv.id === loadConversationId);
-      if (conversationToLoad) {
-        setMessages(conversationToLoad.messages);
-        setCurrentConversationId(conversationToLoad.id);
-      }
-      if (onConversationLoaded) {
-        onConversationLoaded(); // Notify parent to reset the trigger
-      }
+    // Sync with props if a conversation is loaded/switched by parent
+    setMessages(initialMessages || []);
+    setCurrentConversationId(initialConversationId || null);
+    // When a new chat is loaded, clear the input field
+    if (initialConversationId || (initialMessages && initialMessages.length > 0)) {
+      setInputValue("");
     }
-  }, [loadConversationId, onConversationLoaded]);
+  }, [initialMessages, initialConversationId]);
+
 
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
 
-    // If messages array is currently empty, this is the start of a new chat session.
-    // Reset currentConversationId to ensure it's treated as a new conversation.
-    if (messages.length === 0) {
-      setCurrentConversationId(null);
+    let tempNewChatId: string | null = null;
+    if (messages.length === 0 && !currentConversationId) {
+      // This is the very start of a brand-new chat session.
+      // An ID will be generated and associated when the first message is saved.
+      // For now, we don't set currentConversationId state immediately,
+      // but prepare a tempId if needed for the save operation.
+      tempNewChatId = Date.now().toString();
     }
 
     const userMessage: Message = {
-      id: Date.now().toString(),
+      id: Date.now().toString(), // Unique ID for the message itself
       text: inputValue,
       isUser: true,
       timestamp: new Date().toLocaleTimeString()
     };
 
+    // Optimistically update UI with user message
     setMessages(prev => [...prev, userMessage]);
     const currentInput = inputValue;
     setInputValue("");
 
     try {
-      const conversationHistory = messages.map(msg => ({
+      // Prepare conversation history for AI (current messages + new user message)
+      // The 'messages' state here already includes the new userMessage due to the optimistic update above.
+      const conversationHistoryForAI = messages.map(msg => ({ // `messages` here is from the closure, before userMessage is added by setMessages
         role: (msg.isUser ? 'user' : 'assistant') as 'user' | 'assistant',
         content: msg.text
       }));
-
-      conversationHistory.push({
+      conversationHistoryForAI.push({ // Add the current user input that triggered the send
         role: 'user' as const,
         content: currentInput
       });
 
-      const aiResponse = await sendMessage(conversationHistory);
+
+      const aiResponse = await sendMessage(conversationHistoryForAI);
       
       const aiMessage: Message = {
-        id: (Date.now() + 1).toString(),
+        id: (Date.now() + 1).toString(), // Unique ID for the AI message
         text: aiResponse,
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       };
       
-      // Update messages state and then save
+      // Update messages state with AI response and then trigger save
       setMessages(prevMessages => {
         const newMessages = [...prevMessages, aiMessage];
 
-        // Save conversation to localStorage
-        try {
-          const history: Conversation[] = JSON.parse(localStorage.getItem(CHAT_HISTORY_KEY) || '[]');
-          let conversationSaved = false;
+        const finalConversationId = currentConversationId || tempNewChatId || Date.now().toString(); // tempNewChatId is for a brand new chat
 
-          if (currentConversationId) {
-            const existingConvIndex = history.findIndex(conv => conv.id === currentConversationId);
-            if (existingConvIndex !== -1) {
-              history[existingConvIndex].messages = newMessages; // Use newMessages
-              history[existingConvIndex].timestamp = Date.now();
-              conversationSaved = true;
-            }
-          }
-
-          if (!conversationSaved) { // New conversation or ID mismatch
-            const newId = currentConversationId || Date.now().toString();
-            if (!currentConversationId) {
-              setCurrentConversationId(newId); // Set new ID for this session
-            }
-            const newConversation: Conversation = {
-              id: newId,
-              messages: newMessages, // Use newMessages
-              timestamp: Date.now(),
-              title: newMessages[0]?.text.substring(0, 30) + (newMessages[0]?.text.length > 30 ? '...' : '') || "New Chat"
-            };
-            history.push(newConversation);
-          }
-
-          localStorage.setItem(CHAT_HISTORY_KEY, JSON.stringify(history));
-        } catch (e) {
-          console.error("Failed to save chat history:", e);
-          // Optionally notify user
+        if (!currentConversationId && tempNewChatId) {
+          // This was a new chat, now set its ID in state for subsequent messages in this session
+          setCurrentConversationId(finalConversationId);
         }
+
+        const conversationToSave: ConversationData = {
+          id: finalConversationId,
+          messages: newMessages,
+          timestamp: Date.now(),
+          title: newMessages[0]?.isUser
+                 ? (newMessages[0].text.substring(0, 30) + (newMessages[0].text.length > 30 ? '...' : ''))
+                 : (newMessages[1]?.text.substring(0, 30) + (newMessages[1]?.text.length > 30 ? '...' : '')) || "Chat", // Title from first user or AI message
+        };
+
+        onSaveConversation(conversationToSave);
+
         return newMessages; // Return newMessages for the state update
       });
 
     } catch (error) {
       console.error('Error sending message:', error);
-      // Restore messages to pre-send state if AI call fails? Or just leave user message?
-      // For now, user message remains, AI message is not added.
-      // Consider how to handle currentConversationId if this was meant to be a new chat that failed on first AI message.
-      // For simplicity, current error handling only shows a toast.
+      // If AI call fails, user message is already in `messages`.
+      // We might want to remove it or provide a "retry" option.
+      // For now, just toast.
       toast({
-        let conversationSaved = false;
-
-        if (currentConversationId) {
-          const existingConvIndex = history.findIndex(conv => conv.id === currentConversationId);
-          if (existingConvIndex !== -1) {
-            history[existingConvIndex].messages = updatedMessages;
-            history[existingConvIndex].timestamp = Date.now();
-            conversationSaved = true;
-          }
-        }
-
-        if (!conversationSaved) { // New conversation or ID mismatch (shouldn't happen if ID is set right)
-          const newId = currentConversationId || Date.now().toString();
-          if (!currentConversationId) {
-            setCurrentConversationId(newId);
-          }
-          const newConversation: Conversation = {
-            id: newId,
-            messages: updatedMessages,
-            timestamp: Date.now(),
-            title: updatedMessages[0]?.text.substring(0, 30) + (updatedMessages[0]?.text.length > 30 ? '...' : '') || "New Chat"
-          };
-          history.push(newConversation);
-        }
-
         title: "Connection Issue",
         description: "There was a problem processing your message. Please try again!",
         variant: "default",
