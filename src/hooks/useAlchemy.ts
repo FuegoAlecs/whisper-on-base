@@ -1,6 +1,11 @@
 
 import { useState } from 'react';
 
+const weiToGwei = (wei: string): string => {
+  const gwei = parseInt(wei, 16) / 1e9;
+  return gwei.toFixed(2); // Or adjust precision as needed
+};
+
 interface AlchemyConfig {
   apiKey: string;
   network: 'base-mainnet' | 'base-sepolia';
@@ -176,6 +181,116 @@ export const useAlchemy = () => {
     }
   };
 
+  const getCurrentGasPrice = async (): Promise<string | null> => {
+    setIsLoading(true);
+    let currentApiKey = ALCHEMY_API_KEY; // Fallback, consistent with other functions
+    if (typeof window !== 'undefined') {
+       const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
+       if (storedKey && storedKey.trim() !== '') {
+           currentApiKey = storedKey.trim();
+       }
+    }
+    const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${currentApiKey}`;
+
+    const payload = {
+      jsonrpc: '2.0',
+      id: 'alchemy-gasprice', // Unique ID
+      method: 'eth_gasPrice',
+      params: []
+    };
+
+    console.log('[Debug Alchemy] getCurrentGasPrice payload:', JSON.stringify(payload));
+
+    try {
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('[Error Alchemy] getCurrentGasPrice API call failed:', response.status, response.statusText, errorBody);
+        throw new Error(`Alchemy eth_gasPrice failed: ${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        console.error('[Error Alchemy] getCurrentGasPrice API error:', data.error);
+        throw new Error(`Alchemy API error: ${data.error.message}`);
+      }
+
+      if (data.result) {
+        const gasPriceGwei = weiToGwei(data.result);
+        console.log(`[Debug Alchemy] Gas Price (Wei): ${data.result}, (Gwei): ${gasPriceGwei}`);
+        return `${gasPriceGwei} Gwei`;
+      } else {
+        console.log('[Debug Alchemy] No gas price result found.');
+        return null;
+      }
+    } catch (error: any) {
+      console.error('[Error Alchemy] Error in getCurrentGasPrice:', error);
+      throw error; // Re-throw
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getLatestBlockNumber = async (): Promise<string | null> => {
+    setIsLoading(true);
+    let currentApiKey = ALCHEMY_API_KEY; // Fallback
+    if (typeof window !== 'undefined') {
+       const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
+       if (storedKey && storedKey.trim() !== '') {
+           currentApiKey = storedKey.trim();
+       }
+    }
+    const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${currentApiKey}`;
+
+    const payload = {
+      jsonrpc: '2.0',
+      id: 'alchemy-blocknumber', // Unique ID
+      method: 'eth_blockNumber',
+      params: []
+    };
+
+    console.log('[Debug Alchemy] getLatestBlockNumber payload:', JSON.stringify(payload));
+
+    try {
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('[Error Alchemy] getLatestBlockNumber API call failed:', response.status, response.statusText, errorBody);
+        throw new Error(`Alchemy eth_blockNumber failed: ${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      if (data.error) {
+        console.error('[Error Alchemy] getLatestBlockNumber API error:', data.error);
+        throw new Error(`Alchemy API error: ${data.error.message}`);
+      }
+
+      if (data.result) {
+        const blockNumberDecimal = parseInt(data.result, 16).toString();
+        console.log(`[Debug Alchemy] Latest Block (Hex): ${data.result}, (Decimal): ${blockNumberDecimal}`);
+        return blockNumberDecimal;
+      } else {
+        console.log('[Debug Alchemy] No block number result found.');
+        return null;
+      }
+    } catch (error: any) {
+      console.error('[Error Alchemy] Error in getLatestBlockNumber:', error);
+      throw error; // Re-throw
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const getRecentNftMints = async (options?: { limit?: number; collectionAddress?: string }): Promise<NftMintEvent[] | null> => {
     setIsLoading(true); // Assuming setIsLoading is part of useAlchemy hook state
 
@@ -265,5 +380,5 @@ export const useAlchemy = () => {
     }
   };
 
-  return { analyzeWallet, getRecentNftMints, isLoading };
+  return { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, isLoading };
 };

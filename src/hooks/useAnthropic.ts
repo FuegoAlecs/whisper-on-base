@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "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";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
 // Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
@@ -116,7 +116,7 @@ const callGroqAPI = async (fullPrompt: string): Promise<string> => {
 
 export const useAnthropic = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { analyzeWallet, getRecentNftMints, isLoading: alchemyLoading } = useAlchemy();
+  const { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, isLoading: alchemyLoading } = useAlchemy();
 
   const sendMessage = async (messages: AnthropicMessage[], apiKey?: string): Promise<string> => {
     setIsLoading(true);
@@ -159,72 +159,95 @@ This could be due to:
 Please verify the address and try again. I can help with other Base blockchain analysis in the meantime!`;
         }
       } else {
+      // This is inside the 'else' block of 'if (walletAddressMatch)'
       const lowerUserQuery = messages[messages.length - 1].content.toLowerCase().trim();
+      const userQueryForPrompt = messages[messages.length - 1].content; // For use in prompts
 
-      // Intent detection for recent NFT mints
-      const nftMintKeywords = [
+      const nftMintKeywords = [ // The expanded list
         "recent mints", "latest mints", "newly minted",
         "recent nfts", "latest nfts", "who minted recently",
         "wallet address recently minted", "mints on base",
         "minting activity", "show me new mints", "any new mints",
         "latest minting"
       ];
-      if (nftMintKeywords.some(keyword => lowerUserQuery.includes(keyword))) {
-        console.log("[Debug Intent] Detected intent for recent NFT mints.");
-        try {
-          // setIsLoading(true); // Already set at the start of sendMessage
-          const mints = await getRecentNftMints({ limit: 7 }); // Fetch, e.g., last 7 mints
 
-          let mintsDataString = "No recent mints found or data is unavailable.";
+      if (nftMintKeywords.some(keyword => lowerUserQuery.includes(keyword))) {
+        console.log("[Debug Intent] Matched NFT mint keyword. Fetching mints...");
+        try {
+          const mints = await getRecentNftMints({ limit: 7 });
+          let mintsDataString = "No recent mints found or data is unavailable for the Base network.";
           if (mints && mints.length > 0) {
             mintsDataString = mints.map(mint =>
               `- Tx: ${mint.transactionHash.substring(0, 10)}..., Minter: ${mint.minterAddress}, NFT Contract: ${mint.nftContractAddress || 'N/A'}, TokenID: ${mint.tokenId ? mint.tokenId.substring(0,5) : 'N/A'}, Collection: ${mint.collectionName || '[Name Missing]'}`
             ).join('\n');
           }
 
-          const userQueryForPrompt = messages[messages.length - 1].content;
           const systemPromptForNftMints = `You are ChainWhisper, an AI assistant. The user asked about recent NFT mints on Base. You have been provided with a list of recent mint events. Present this information clearly and conversationally. If no mints were found, state that. After listing the mints, you can offer to analyze one of the minter addresses or NFT contract addresses if the user provides one.`;
-
           const promptForNftMints = `
 System: ${systemPromptForNftMints}
-
 User: My query was: "${userQueryForPrompt}"
-
 Here are the recent NFT mint events fetched from the Base network:
 ${mintsDataString}
 ---
-
 Please summarize these recent mints for me.
 `;
-          // console.log("[Debug Groq] NFT Mints Prompt:", promptForNftMints); // Optional for debugging
+          // console.log("[Debug Groq] NFT Mints Data Prompt:", promptForNftMints);
           const aiResponse = await callGroqAPI(promptForNftMints);
           return aiResponse;
-
         } catch (error) {
-          console.error("[Error App] Failed to fetch or process NFT mints:", error);
+          console.error("[Error App] Failed to fetch or process NFT mints for keyword intent:", error);
           return "Sorry, I encountered an error while trying to fetch recent NFT mints. Please try again later.";
         }
       }
-      // ELSE, if not NFT mint intent, it will fall through to the existing general query handler below this block:
-      // NEW LOGIC FOR GENERAL QUERIES:
-      console.log("[Debug Groq] No wallet address detected. Routing general query to Groq.");
-      const userQuery = messages[messages.length - 1].content; // Get the full user query
+      else if (["gas price", "current gas", "network fee", "latest block", "block number", "network status", "base status"].some(keyword => lowerUserQuery.includes(keyword))) {
+        console.log("[Debug Intent] Detected intent for network status (gas/block).");
+        try {
+          // setIsLoading(true); // Already set at the start of sendMessage
+          const gasPrice = await getCurrentGasPrice();
+          const blockNumber = await getLatestBlockNumber();
 
-      const generalQuerySystemPrompt = "You are ChainWhisper, an AI assistant knowledgeable about the Base blockchain and general crypto concepts. The user has a general question. Please answer conversationally and helpfully. If the question asks for specific, real-time, aggregate on-chain statistics you don't have direct access to (e.g., 'how many NFTs were minted today across the whole network?'), politely explain your current primary capability is analyzing specific wallet addresses when provided, and that you can answer conceptual questions, but you cannot provide that specific live aggregate statistic. You can offer to analyze a specific address if the user provides one.";
-      
-      const promptForGeneralQuery = `
-System: ${generalQuerySystemPrompt}
+          let statusDataString = "Could not fetch current network status.";
+          if (gasPrice && blockNumber) {
+            statusDataString = `Current Base network status:
+- Gas Price: ${gasPrice}
+- Latest Block Number: ${blockNumber}`;
+          } else if (gasPrice) {
+            statusDataString = `Current Base network gas price: ${gasPrice}. Block number data is unavailable.`;
+          } else if (blockNumber) {
+            statusDataString = `Latest Base network block number: ${blockNumber}. Gas price data is unavailable.`;
+          }
 
-User: My question is: "${userQuery}"
+          const systemPromptForNetworkStatus = `You are ChainWhisper, an AI assistant. The user asked about the current Base network status (gas price or latest block). You have been provided with this data. Present it clearly and conversationally. If some data (e.g., only gas price or only block number) is available, present what you have and mention what's missing.`;
+
+          const promptForNetworkStatus = `
+System: ${systemPromptForNetworkStatus}
+User: My query was: "${userQueryForPrompt}"
+Here is the current Base network status fetched from Alchemy:
+${statusDataString}
+---
+Please provide this network status information.
 `;
-      // console.log("[Debug Groq] General Query Prompt:", promptForGeneralQuery); // Optional for debugging
+          // console.log("[Debug Groq] Network Status Prompt:", promptForNetworkStatus);
+          const aiResponse = await callGroqAPI(promptForNetworkStatus);
+          return aiResponse;
 
-      // It's important to call setIsLoading(true) here if it wasn't set at the start of sendMessage for all paths.
-      // Assuming setIsLoading(true) is already called at the beginning of sendMessage.
-      // If not, it should be: setIsLoading(true);
-
-      const aiResponse = await callGroqAPI(promptForGeneralQuery); // Use existing callGroqAPI
-      return aiResponse;
+        } catch (error) {
+          console.error("[Error App] Failed to fetch or process network status:", error);
+          return "Sorry, I encountered an error while trying to fetch the current network status. Please try again later.";
+        }
+      }
+      else {
+        // General query handler (if no NFT mint keyword matched)
+        console.log("[Debug Groq] No specific intent matched (NFT mints, network status). Routing to general Groq handler.");
+        const generalQuerySystemPrompt = "You are ChainWhisper, an AI assistant knowledgeable about the Base blockchain and general crypto concepts. The user has a general question. Please answer conversationally and helpfully. If the question asks for specific, real-time, aggregate on-chain statistics you don't have direct access to (e.g., 'how many NFTs were minted today across the whole network?'), politely explain your current primary capability is analyzing specific wallet addresses when provided, and that you can answer conceptual questions, but you cannot provide that specific live aggregate statistic. You can offer to analyze a specific address if the user provides one.";
+        const promptForGeneralQuery = `
+System: ${generalQuerySystemPrompt}
+User: My question is: "${userQueryForPrompt}"
+`;
+        // console.log("[Debug Groq] General Query Prompt:", promptForGeneralQuery);
+        const aiResponse = await callGroqAPI(promptForGeneralQuery);
+        return aiResponse;
+      }
     }
       
     } catch (error) {
