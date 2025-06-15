@@ -46,26 +46,26 @@ const ChatWindow = () => {
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Based on Base network data analysis:\n\n${getMockResponse(inputValue)}`,
+        text: `Here's what I found:\n\n${getMockResponse(inputValue)}`,
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       };
       setMessages(prev => [...prev, aiResponse]);
       setIsLoading(false);
-    }, 2000);
+    }, 1500);
   };
 
   const getMockResponse = (query: string) => {
-    if (query.toLowerCase().includes("nft")) {
-      return "🎨 Top NFT Activity on Base:\n• 0x1234...5678 minted 127 NFTs (most active)\n• Total mints in last hour: 1,243\n• Popular collections: BaseApes, ChainPunks\n• Average mint cost: 0.003 ETH";
+    if (query.toLowerCase().includes("weather")) {
+      return "🌤️ Current weather conditions:\n• Temperature: 72°F (22°C)\n• Conditions: Partly cloudy\n• Humidity: 65%\n• Wind: 8 mph SW";
     }
-    if (query.toLowerCase().includes("gas")) {
-      return "⛽ Gas Usage Analysis:\n• Current Base gas price: 0.25 gwei\n• Top spenders:\n  - 0xabcd...efgh: 2.3 ETH in fees\n  - 0x9876...5432: 1.8 ETH in fees\n• Average transaction cost: $0.12";
+    if (query.toLowerCase().includes("news")) {
+      return "📰 Latest headlines:\n• Tech: Apple announces new M4 chip\n• Markets: S&P 500 reaches new high\n• Science: Webb telescope discovers new exoplanet\n• Sports: World Cup qualifiers begin";
     }
-    if (query.toLowerCase().includes("tornado")) {
-      return "🔍 Tornado Cash Analysis:\n• Address flagged: ❌ No direct interactions\n• Privacy score: Low risk\n• Last checked: 2 minutes ago\n• Compliance status: Clean";
+    if (query.toLowerCase().includes("crypto")) {
+      return "₿ Crypto market update:\n• Bitcoin: $43,250 (+2.1%)\n• Ethereum: $2,650 (+1.8%)\n• Market cap: $1.7T\n• Fear & Greed Index: 58 (Neutral)";
     }
-    return "📊 Base Network Insights:\n• Current block: 8,234,567\n• Active wallets today: 45,678\n• Total transactions: 2.1M\n• Network health: 🟢 Excellent";
+    return "🤖 I'm Grok, your AI assistant. I can help with real-time information, analysis, and more. What would you like to know?";
   };
 
   const handleExampleClick = (query: string) => {
@@ -81,13 +81,13 @@ const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-6 space-y-4">
+      <div className="flex-1 overflow-y-auto p-4 lg:p-6 space-y-4">
         {messages.length === 0 && (
-          <div className="text-center py-12">
+          <div className="text-center py-8 lg:py-12 px-4">
             <div className="mb-6">
-              <Sparkles className="h-12 w-12 text-electric-blue-400 mx-auto mb-4 animate-pulse-glow" />
-              <h3 className="text-xl font-semibold text-white mb-2">Welcome to ChainWhisper</h3>
-              <p className="text-gray-400">Ask me anything about Base network activity</p>
+              <Sparkles className="h-10 w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-4" />
+              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2">Hi, I'm Grok</h3>
+              <p className="text-gray-400 text-sm lg:text-base">A real-time AI assistant by xAI</p>
             </div>
             <QueryExamples onExampleClick={handleExampleClick} />
           </div>
@@ -106,25 +106,25 @@ const ChatWindow = () => {
         <div ref={messagesEndRef} />
       </div>
 
-      <div className="border-t border-white/10 bg-black/30 backdrop-blur-xl p-4">
-        <div className="flex gap-3">
+      <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-4 lg:p-6">
+        <div className="flex gap-2 lg:gap-3 max-w-4xl mx-auto">
           <div className="flex-1 relative">
             <Input
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask a question about on-chain activity..."
-              className="glass border-white/20 bg-white/5 text-white placeholder-gray-400 pr-12 focus:border-electric-blue-500 focus:ring-electric-blue-500/20"
+              placeholder="Ask Grok anything..."
+              className="bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg text-sm lg:text-base py-3 lg:py-4"
               disabled={isLoading}
             />
           </div>
           <Button
             onClick={handleSend}
             disabled={!inputValue.trim() || isLoading}
-            className="bg-electric-blue-500 hover:bg-electric-blue-600 text-white px-6 neon-glow transition-all duration-300"
+            className="bg-orange-600 hover:bg-orange-700 text-white px-4 lg:px-6 py-3 lg:py-4 rounded-lg transition-all duration-200"
           >
-            <Send className="h-4 w-4 mr-2" />
-            Whisper
+            <Send className="h-4 w-4 lg:h-5 lg:w-5" />
+            <span className="hidden sm:inline ml-2">Send</span>
           </Button>
         </div>
       </div>

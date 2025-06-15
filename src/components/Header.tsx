@@ -1,42 +1,35 @@
 
 import { Button } from "@/components/ui/button";
-import { Zap, Moon, Sun, Wallet } from "lucide-react";
+import { Zap, Menu, X } from "lucide-react";
 import { useState } from "react";
 
-const Header = () => {
-  const [isDark, setIsDark] = useState(true);
+interface HeaderProps {
+  onSidebarToggle: () => void;
+}
 
+const Header = ({ onSidebarToggle }: HeaderProps) => {
   return (
-    <header className="border-b border-white/10 bg-black/50 backdrop-blur-xl">
-      <div className="container mx-auto px-4 py-4">
+    <header className="border-b border-gray-800 bg-gray-950/95 backdrop-blur-sm sticky top-0 z-30">
+      <div className="px-4 py-3 lg:px-6 lg:py-4">
         <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 lg:space-x-3">
             <div className="relative">
-              <Zap className="h-8 w-8 text-electric-blue-500 animate-pulse-glow" />
-              <div className="absolute inset-0 h-8 w-8 bg-electric-blue-500/20 blur-xl rounded-full" />
+              <Zap className="h-6 w-6 lg:h-8 lg:w-8 text-orange-500" />
             </div>
             <div>
-              <h1 className="text-2xl font-bold text-white neon-text">ChainWhisper</h1>
-              <p className="text-sm text-gray-400">Ask-Anything for Base Data</p>
+              <h1 className="text-lg lg:text-2xl font-bold text-white">Grok</h1>
+              <p className="text-xs lg:text-sm text-gray-400 hidden sm:block">Real-time AI for everything</p>
             </div>
           </div>
           
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2 lg:space-x-3">
             <Button
-              variant="outline"
+              variant="ghost"
               size="sm"
-              onClick={() => setIsDark(!isDark)}
-              className="glass border-white/20 hover:bg-white/10"
+              onClick={onSidebarToggle}
+              className="lg:hidden text-gray-400 hover:text-white hover:bg-gray-800"
             >
-              {isDark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="glass border-electric-blue-500/30 text-electric-blue-400 hover:bg-electric-blue-500/10"
-            >
-              <Wallet className="h-4 w-4 mr-2" />
-              Connect Wallet
+              <Menu className="h-5 w-5" />
             </Button>
           </div>
         </div>

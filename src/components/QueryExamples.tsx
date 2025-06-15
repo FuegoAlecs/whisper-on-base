@@ -7,25 +7,25 @@ interface QueryExamplesProps {
 
 const QueryExamples = ({ onExampleClick }: QueryExamplesProps) => {
   const examples = [
-    "What wallet minted most NFTs today?",
-    "Top gas spenders on Base",
-    "Did 0x... interact with Tornado Cash?",
-    "How many wallets minted NFTs in the last hour?",
-    "Show me the largest DEX trades today",
-    "Which tokens saw the most volume?"
+    "What's happening in the world today?",
+    "Explain quantum computing simply",
+    "Latest crypto market trends",
+    "How does AI work?",
+    "Climate change updates",
+    "Space exploration news"
   ];
 
   return (
     <div className="mb-6">
-      <h3 className="text-sm font-medium text-gray-400 mb-3">Try asking:</h3>
-      <div className="flex flex-wrap gap-2">
+      <h3 className="text-sm font-medium text-gray-400 mb-3 text-center lg:text-left">Try asking:</h3>
+      <div className="flex flex-wrap gap-2 justify-center lg:justify-start">
         {examples.map((example, index) => (
           <Button
             key={index}
             variant="outline"
             size="sm"
             onClick={() => onExampleClick(example)}
-            className="glass border-white/20 hover:border-electric-blue-500/50 hover:bg-electric-blue-500/10 text-gray-300 hover:text-white transition-all duration-300"
+            className="border-gray-700 bg-gray-900/50 hover:bg-gray-800 text-gray-300 hover:text-white hover:border-orange-500/50 transition-all duration-200 text-xs lg:text-sm"
           >
             {example}
           </Button>
