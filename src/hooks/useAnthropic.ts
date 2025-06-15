@@ -2,7 +2,8 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const CONCEPTUAL_AI_API_KEY = "USER_WOULD_PROVIDE_A_REAL_KEY_HERE_OR_VIA_BACKEND";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
+// Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
   role: 'user' | 'assistant' | 'system';
@@ -43,30 +44,74 @@ Based on my query and the provided Alchemy data, please:
   return prompt;
 };
 
-const callConceptualAIAPI = async (prompt: string): Promise<string> => {
-  console.log("[Debug AI] Calling Conceptual AI API with prompt (first 100 chars):", prompt.substring(0, 100));
-  // Simulate API call delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
+const callGroqAPI = async (fullPrompt: string): Promise<string> => {
+  console.log("[Debug Groq] Attempting to call Groq API.");
 
-  // In a real scenario, this would be:
-  // const response = await fetch('AI_SERVICE_ENDPOINT', {
-  //   method: 'POST',
-  //   headers: {
-  //     'Content-Type': 'application/json',
-  //     'Authorization': `Bearer ${CONCEPTUAL_AI_API_KEY}` // Or other auth method
-  //   },
-  //   body: JSON.stringify({ prompt: prompt, model: "chosen-model-name", /* other params */ })
-  // });
-  // if (!response.ok) { throw new Error('AI API call failed'); }
-  // const aiData = await response.json();
-  // return aiData.choices[0].text; // Or however the specific AI API returns data
+  // Extract System and User parts from the fullPrompt
+  let systemContent = "";
+  let userContent = fullPrompt; // Default to full prompt if no "System:" prefix
 
-  // For now, return a MOCKED response:
-  const mockAIResponse = `This is a simulated AI response based on the data for the wallet.
-It would normally provide a conversational summary and insights here.
-For instance, it might say: 'This wallet (${prompt.match(/Wallet Address: (0x[a-fA-F0-9]{40})/)?.[1]}) shows X ETH and Y transactions. It holds Z tokens, some of which we don't have symbol data for. Would you like to dive deeper into its transaction history?'`;
-  console.log("[Debug AI] Returning Mocked AI Response:", mockAIResponse);
-  return mockAIResponse;
+  const systemMatch = fullPrompt.match(/^System:(.*?)User:/s); // Non-greedy match for system
+  if (systemMatch && systemMatch[1]) {
+    systemContent = systemMatch[1].trim();
+    userContent = fullPrompt.substring(systemMatch[0].length).trim(); // Get content after "System:...User:"
+  } else {
+    // Fallback if "System:" prefix is not found or "User:" is not after it.
+    // Could also look for just "User:" if system part is truly optional by design.
+    const userMatchOnly = fullPrompt.match(/^User:(.*)/s);
+    if (userMatchOnly && userMatchOnly[1]) {
+       userContent = userMatchOnly[1].trim();
+    }
+    // If neither, the whole prompt is treated as user content for simplicity here.
+  }
+
+  console.log("[Debug Groq] System Content (first 100):", systemContent.substring(0,100));
+  console.log("[Debug Groq] User Content (first 100):", userContent.substring(0,100));
+
+  const messages = [];
+  if (systemContent) {
+    messages.push({ role: "system", content: systemContent });
+  }
+  messages.push({ role: "user", content: userContent });
+
+  const groqPayload = {
+    model: "llama-3.1-8b-instant", // As decided
+    messages: messages,
+    temperature: 0.7,       // Optional: common default
+    max_tokens: 1500,       // Optional: adjust as needed
+  };
+
+  try {
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER}`
+      },
+      body: JSON.stringify(groqPayload)
+    });
+
+    if (!response.ok) {
+      const errorBody = await response.text(); // Use text() first to avoid JSON parse error if body is not JSON
+      console.error("[Error Groq] API call failed:", response.status, response.statusText, errorBody);
+      return `Error from Groq API: ${response.status} ${response.statusText}. Details: ${errorBody}`;
+    }
+
+    const data = await response.json();
+    // console.log("[Debug Groq] Raw API Response:", JSON.stringify(data, null, 2)); // For deep debugging
+
+    if (data.choices && data.choices[0] && data.choices[0].message && data.choices[0].message.content) {
+      console.log("[Debug Groq] Successfully received response from Groq.");
+      return data.choices[0].message.content;
+    } else {
+      console.error("[Error Groq] Invalid response structure from API:", data);
+      return "Error: Received an invalid response structure from Groq API.";
+    }
+
+  } catch (error: any) {
+    console.error("[Error Groq] Fetch error:", error);
+    return `Network or other error when calling Groq API: ${error.message}`;
+  }
 };
 
 export const useAnthropic = () => {
@@ -96,7 +141,7 @@ export const useAnthropic = () => {
             
             // const userMessage = messages[messages.length - 1].content; // Already exists
             const prompt = constructAIWalletAnalysisPrompt(userMessage, walletData);
-            const aiResponse = await callConceptualAIAPI(prompt);
+            const aiResponse = await callGroqAPI(prompt);
             return aiResponse; // This is the new return for successful wallet analysis
           } else {
             return `❌ Unable to retrieve data for wallet ${address}. The wallet may be empty or there might be an API issue.`;
