@@ -16,8 +16,8 @@ export const useHuggingFace = () => {
       // Use your provided API key as default
       const token = apiKey || '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';
       
-      // Use a working text generation model
-      const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium', {
+      // Use Hugging Face's text generation inference API with a reliable model
+      const response = await fetch('https://api-inference.huggingface.co/models/HuggingFaceH4/zephyr-7b-beta', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -26,7 +26,7 @@ export const useHuggingFace = () => {
         body: JSON.stringify({
           inputs: messages[messages.length - 1].content,
           parameters: {
-            max_length: 100,
+            max_new_tokens: 150,
             temperature: 0.7,
             do_sample: true,
             return_full_text: false
@@ -35,19 +35,18 @@ export const useHuggingFace = () => {
       });
 
       if (!response.ok) {
-        // If the first model fails, try a different backup model
-        const backupResponse = await fetch('https://api-inference.huggingface.co/models/gpt2', {
+        // If the first model fails, try a simpler backup model
+        const backupResponse = await fetch('https://api-inference.huggingface.co/models/google/flan-t5-small', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            inputs: messages[messages.length - 1].content,
+            inputs: `Answer this question: ${messages[messages.length - 1].content}`,
             parameters: {
-              max_length: 100,
-              temperature: 0.7,
-              return_full_text: false
+              max_new_tokens: 100,
+              temperature: 0.7
             }
           }),
         });
