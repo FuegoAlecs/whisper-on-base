@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "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";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
 // Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
