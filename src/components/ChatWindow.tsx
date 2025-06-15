@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Send, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
-import QueryExamples from "./QueryExamples";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 
@@ -76,10 +75,6 @@ const ChatWindow = () => {
     }
   };
 
-  const handleExampleClick = (query: string) => {
-    setInputValue(query);
-  };
-
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
@@ -100,7 +95,6 @@ const ChatWindow = () => {
                 Connected to Alchemy for real blockchain data analysis
               </div>
             </div>
-            <QueryExamples onExampleClick={handleExampleClick} />
           </div>
         )}
         
