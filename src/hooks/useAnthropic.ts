@@ -9,9 +9,27 @@ interface AnthropicMessage {
 
 export const useAnthropic = () => {
   const [isLoading, setIsLoading] = useState(false);
+  const [lastAnalysedAddress, setLastAnalysedAddress] = useState<string | null>(null);
+  const [followUpPromptActive, setFollowUpPromptActive] = useState<boolean>(false);
   const { analyzeWallet, isLoading: alchemyLoading } = useAlchemy();
 
   const sendMessage = async (messages: AnthropicMessage[], apiKey?: string): Promise<string> => {
+    if (followUpPromptActive) {
+      const currentInput = messages[messages.length - 1].content.toLowerCase().trim();
+      const affirmatives = ["proceed", "yes", "ok", "sure", "continue", "yep", "yeah", "y"];
+
+      if (affirmatives.includes(currentInput)) {
+        setFollowUpPromptActive(false); // Reset the prompt
+        // It's important to use lastAnalysedAddress here, which is in scope from the hook's state
+        return `Okay! For wallet ${lastAnalysedAddress || 'the previously mentioned wallet'}, what specific details are you interested in? For example, you could ask for 'show recent transactions', 'details about [TOKEN_SYMBOL] transfers', or 'interactions with [DEFI_PROTOCOL_NAME]'. Please be specific, as I'm still learning to fetch advanced details!`;
+      } else {
+        // If prompt was active but input is not a simple affirmative,
+        // assume it's a new query or a more complex follow-up.
+        // Reset prompt and continue to process normally.
+        setFollowUpPromptActive(false);
+        // No return here, let it fall through to normal processing.
+      }
+    }
     setIsLoading(true);
     
     try {
@@ -84,6 +102,8 @@ export const useAnthropic = () => {
               adviceNote = specificSymbolNote;
             }
 
+            setLastAnalysedAddress(address); // Set the address of the wallet that was just analyzed
+            setFollowUpPromptActive(true);   // Indicate that the follow-up prompt is now active
             return `🔍 **Wallet Analysis for ${address}**
 
 📊 **Overview:**
