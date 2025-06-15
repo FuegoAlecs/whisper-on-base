@@ -13,12 +13,15 @@ export const useHuggingFace = () => {
     setIsLoading(true);
     
     try {
+      // Use your provided API key as default
+      const token = apiKey || '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';
+      
       // Use the free Hugging Face Inference API
       const response = await fetch('https://api-inference.huggingface.co/models/microsoft/DialoGPT-large', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          ...(apiKey && { 'Authorization': `Bearer ${apiKey}` })
+          'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
           inputs: messages[messages.length - 1].content,
@@ -36,6 +39,7 @@ export const useHuggingFace = () => {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
             inputs: messages[messages.length - 1].content,
