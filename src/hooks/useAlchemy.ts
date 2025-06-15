@@ -52,7 +52,7 @@ interface TopTradingPairData {
   pairUrl: string;
 }
 
-const FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER = "YOUR_ACTUAL_ALCHEMY_KEY_FOR_LOCAL_TESTING_ONLY_NEVER_COMMIT_A_REAL_KEY";
+const FALLBACK_ALCHEMY_API_KEY_PLACEHOLDER = "OA8inGxL7DDI-mzrnnBi8";
 
 export const useAlchemy = () => {
   const [isLoading, setIsLoading] = useState(false);
