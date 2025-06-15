@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "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";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
 // Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
@@ -116,7 +116,7 @@ const callGroqAPI = async (fullPrompt: string): Promise<string> => {
 
 export const useAnthropic = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { analyzeWallet, isLoading: alchemyLoading } = useAlchemy();
+  const { analyzeWallet, getRecentNftMints, isLoading: alchemyLoading } = useAlchemy();
 
   const sendMessage = async (messages: AnthropicMessage[], apiKey?: string): Promise<string> => {
     setIsLoading(true);
@@ -159,6 +159,47 @@ This could be due to:
 Please verify the address and try again. I can help with other Base blockchain analysis in the meantime!`;
         }
       } else {
+      const lowerUserQuery = messages[messages.length - 1].content.toLowerCase().trim();
+
+      // Intent detection for recent NFT mints
+      const nftMintKeywords = ["recent mints", "latest mints", "newly minted", "recent nfts", "latest nfts", "who minted recently"];
+      if (nftMintKeywords.some(keyword => lowerUserQuery.includes(keyword))) {
+        console.log("[Debug Intent] Detected intent for recent NFT mints.");
+        try {
+          // setIsLoading(true); // Already set at the start of sendMessage
+          const mints = await getRecentNftMints({ limit: 7 }); // Fetch, e.g., last 7 mints
+
+          let mintsDataString = "No recent mints found or data is unavailable.";
+          if (mints && mints.length > 0) {
+            mintsDataString = mints.map(mint =>
+              `- Tx: ${mint.transactionHash.substring(0, 10)}..., Minter: ${mint.minterAddress.substring(0,10)}..., NFT: ${mint.nftContractAddress ? mint.nftContractAddress.substring(0,10) : 'N/A'}..., TokenID: ${mint.tokenId ? mint.tokenId.substring(0,5) : 'N/A'}, Collection: ${mint.collectionName || '[Name Missing]'}`
+            ).join('\n');
+          }
+
+          const userQueryForPrompt = messages[messages.length - 1].content;
+          const systemPromptForNftMints = `You are ChainWhisper, an AI assistant. The user asked about recent NFT mints on Base. You have been provided with a list of recent mint events. Present this information clearly and conversationally. If no mints were found, state that. After listing the mints, you can offer to analyze one of the minter addresses or NFT contract addresses if the user provides one.`;
+
+          const promptForNftMints = `
+System: ${systemPromptForNftMints}
+
+User: My query was: "${userQueryForPrompt}"
+
+Here are the recent NFT mint events fetched from the Base network:
+${mintsDataString}
+---
+
+Please summarize these recent mints for me.
+`;
+          // console.log("[Debug Groq] NFT Mints Prompt:", promptForNftMints); // Optional for debugging
+          const aiResponse = await callGroqAPI(promptForNftMints);
+          return aiResponse;
+
+        } catch (error) {
+          console.error("[Error App] Failed to fetch or process NFT mints:", error);
+          return "Sorry, I encountered an error while trying to fetch recent NFT mints. Please try again later.";
+        }
+      }
+      // ELSE, if not NFT mint intent, it will fall through to the existing general query handler below this block:
       // NEW LOGIC FOR GENERAL QUERIES:
       console.log("[Debug Groq] No wallet address detected. Routing general query to Groq.");
       const userQuery = messages[messages.length - 1].content; // Get the full user query

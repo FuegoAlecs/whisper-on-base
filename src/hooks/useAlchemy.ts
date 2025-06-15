@@ -22,6 +22,17 @@ interface WalletAnalysis {
   isContract: boolean;
 }
 
+interface NftMintEvent {
+  transactionHash: string;
+  blockNumber: string;
+  timestamp?: string;
+  nftContractAddress: string | null; // rawContract.address can be null
+  tokenId: string | null;
+  minterAddress: string; // 'to' address
+  collectionName?: string; // 'asset' field, or from metadata if we enhance
+  tokenType: "erc721" | "erc1155" | "unknown";
+}
+
 const ALCHEMY_API_KEY = 'jFa3wNWqfvKYb9GrCUtmk';
 
 export const useAlchemy = () => {
@@ -165,5 +176,94 @@ export const useAlchemy = () => {
     }
   };
 
-  return { analyzeWallet, isLoading };
+  const getRecentNftMints = async (options?: { limit?: number; collectionAddress?: string }): Promise<NftMintEvent[] | null> => {
+    setIsLoading(true); // Assuming setIsLoading is part of useAlchemy hook state
+
+    // Determine API Key (reuse existing logic if analyzeWallet's key determination is suitable)
+    // For simplicity, let's re-fetch or assume effectiveApiKey is available from hook's scope.
+    // This part might need refinement based on how API key is managed across hook functions.
+    // For now, assume 'effectiveApiKey' is accessible from the outer scope of useAlchemy or re-evaluate it.
+    // Let's use a simplified key access for this subtask, assuming ALCHEMY_API_KEY exists.
+    // A more robust solution would pass the key or ensure it's consistently derived.
+    let currentApiKey = ALCHEMY_API_KEY; // Fallback, ideally use the same logic as analyzeWallet
+    if (typeof window !== 'undefined') {
+       const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
+       if (storedKey && storedKey.trim() !== '') {
+           currentApiKey = storedKey.trim();
+       }
+    }
+    // Ensure this key logic is consistent if this were a production hook.
+
+    const baseUrl = `https://base-mainnet.g.alchemy.com/v2/${currentApiKey}`;
+    const limit = options?.limit || 10;
+
+    const payload: any = {
+      jsonrpc: '2.0',
+      id: 1, // Consider using a different ID than analyzeWallet if calls can overlap
+      method: 'alchemy_getAssetTransfers',
+      params: [{
+        fromBlock: '0x0', // Not strictly needed if ordering by latest
+        toBlock: 'latest',
+        fromAddress: '0x0000000000000000000000000000000000000000',
+        category: ['erc721', 'erc1155'],
+        order: 'desc',
+        withMetadata: true,
+        maxCount: '0x' + limit.toString(16), // Convert limit to hex
+        excludeZeroValue: true, // Default, generally okay for NFTs
+      }]
+    };
+
+    if (options?.collectionAddress) {
+      payload.params[0].contractAddresses = [options.collectionAddress];
+    }
+
+    console.log('[Debug Alchemy] getRecentNftMints payload:', JSON.stringify(payload));
+
+    try {
+      const response = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('[Error Alchemy] getRecentNftMints API call failed:', response.status, response.statusText, errorBody);
+        throw new Error(`Alchemy getRecentNftMints failed: ${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      // console.log('[Debug Alchemy] getRecentNftMints raw response:', JSON.stringify(data));
+
+      if (data.error) {
+        console.error('[Error Alchemy] getRecentNftMints API error:', data.error);
+        throw new Error(`Alchemy API error: ${data.error.message}`);
+      }
+
+      if (data.result && data.result.transfers) {
+        const mints: NftMintEvent[] = data.result.transfers.map((transfer: any) => ({
+          transactionHash: transfer.hash,
+          blockNumber: transfer.blockNum,
+          timestamp: transfer.metadata?.blockTimestamp,
+          nftContractAddress: transfer.rawContract?.address,
+          tokenId: transfer.erc721TokenId || (transfer.erc1155Metadata && transfer.erc1155Metadata[0] ? transfer.erc1155Metadata[0].tokenId : null),
+          minterAddress: transfer.to,
+          collectionName: transfer.asset, // 'asset' field might hold the collection symbol
+          tokenType: transfer.category as ("erc721" | "erc1155" | "unknown"),
+        }));
+        console.log(`[Debug Alchemy] Processed ${mints.length} NFT mints.`);
+        return mints;
+      } else {
+        console.log('[Debug Alchemy] No transfers found or unexpected structure.');
+        return [];
+      }
+    } catch (error: any) {
+      console.error('[Error Alchemy] Error in getRecentNftMints:', error);
+      throw error; // Re-throw to be caught by caller if needed, or return null/empty
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return { analyzeWallet, getRecentNftMints, isLoading };
 };
