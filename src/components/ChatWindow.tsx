@@ -84,10 +84,10 @@ const ChatWindow = () => {
 
   return (
     <div className="flex flex-col h-full">
-      <div className="flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 space-y-2 sm:space-y-4">
+      <div className="flex flex-col flex-1 overflow-y-auto p-2 sm:p-4 lg:p-6 space-y-2 sm:space-y-4">
         {messages.length === 0 && (
-          <div className="text-center py-4 sm:py-8 lg:py-12 px-2 sm:px-4">
-            <div className="mb-3 sm:mb-6">
+          <div className="flex flex-col justify-center items-center h-full px-2 sm:px-4">
+            <div className="mb-3 sm:mb-6 text-center"> {/* Added text-center here for the inner content */}
               <Sparkles className="h-6 w-6 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-2 sm:mb-4" />
               <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Hi, I'm ChainWhisper</h3>
               <p className="text-gray-400 text-xs sm:text-base">Your AI oracle for Base network data</p>
