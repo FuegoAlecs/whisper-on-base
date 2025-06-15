@@ -64,13 +64,9 @@ export const useHuggingFace = () => {
     } catch (error) {
       console.error('Hugging Face API error:', error);
       
-      // Fallback response for blockchain/crypto queries
-      const userQuestion = messages[messages.length - 1].content.toLowerCase();
-      if (userQuestion.includes('nft') || userQuestion.includes('wallet') || userQuestion.includes('base') || userQuestion.includes('crypto')) {
-        return "🔗 I'm ChainWhisper, your AI oracle for Base network analysis! While I'm currently connecting to my data sources, I can help you analyze:\n\n• NFT minting patterns and collections\n• Wallet behavior and risk assessment\n• DeFi protocol interactions\n• Gas optimization strategies\n• Token movement analysis\n\nPlease try your question again, or ask about specific wallet addresses or transactions you'd like me to investigate! 📊";
-      }
-      
-      throw error;
+      // Provide a more generic fallback that acknowledges the actual question
+      const userQuestion = messages[messages.length - 1].content;
+      return `I'm experiencing some technical difficulties connecting to my AI models right now. I see you asked: "${userQuestion}"\n\nI'd be happy to help answer that, but I'm currently unable to process your request properly. Please try asking again in a moment, or rephrase your question and I'll do my best to assist you!`;
     } finally {
       setIsLoading(false);
     }
