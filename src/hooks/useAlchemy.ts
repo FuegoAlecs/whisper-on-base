@@ -34,8 +34,21 @@ export const useAlchemy = () => {
 
     setIsLoading(true);
 
+    let effectiveApiKey = ALCHEMY_API_KEY; // Default to hardcoded key
+    if (typeof window !== 'undefined') { // Check if localStorage is available
+        const storedKey = localStorage.getItem('chainwhisper_alchemy_key');
+        if (storedKey && storedKey.trim() !== '') {
+            effectiveApiKey = storedKey.trim();
+            console.log('Using API key from local storage.');
+        } else {
+            console.log('No API key in local storage or key is empty, using default.');
+        }
+    } else {
+        console.log('localStorage not available, using default API key.');
+    }
+
     try {
-      const apiKey = config?.apiKey || ALCHEMY_API_KEY;
+      const apiKey = config?.apiKey || effectiveApiKey;
       const baseUrl = config?.network === 'base-sepolia' 
         ? `https://base-sepolia.g.alchemy.com/v2/${apiKey}`
         : `https://base-mainnet.g.alchemy.com/v2/${apiKey}`;
