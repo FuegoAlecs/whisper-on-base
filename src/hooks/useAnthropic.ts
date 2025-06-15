@@ -162,7 +162,13 @@ Please verify the address and try again. I can help with other Base blockchain a
       const lowerUserQuery = messages[messages.length - 1].content.toLowerCase().trim();
 
       // Intent detection for recent NFT mints
-      const nftMintKeywords = ["recent mints", "latest mints", "newly minted", "recent nfts", "latest nfts", "who minted recently"];
+      const nftMintKeywords = [
+        "recent mints", "latest mints", "newly minted",
+        "recent nfts", "latest nfts", "who minted recently",
+        "wallet address recently minted", "mints on base",
+        "minting activity", "show me new mints", "any new mints",
+        "latest minting"
+      ];
       if (nftMintKeywords.some(keyword => lowerUserQuery.includes(keyword))) {
         console.log("[Debug Intent] Detected intent for recent NFT mints.");
         try {
