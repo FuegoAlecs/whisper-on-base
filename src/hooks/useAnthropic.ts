@@ -116,7 +116,7 @@ const callGroqAPI = async (fullPrompt: string): Promise<string> => {
 
 export const useAnthropic = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, isLoading: alchemyLoading } = useAlchemy();
+  const { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, getTopTradedTokens, isLoading: alchemyLoading } = useAlchemy();
 
   const sendMessage = async (messages: AnthropicMessage[], apiKey?: string): Promise<string> => {
     setIsLoading(true);
@@ -236,9 +236,43 @@ Please provide this network status information.
           return "Sorry, I encountered an error while trying to fetch the current network status. Please try again later.";
         }
       }
+      else if (["top traded tokens", "hot tokens", "popular tokens", "dex activity", "top pairs", "trending tokens"].some(keyword => lowerUserQuery.includes(keyword))) {
+        console.log("[Debug Intent] Detected intent for top traded tokens.");
+        try {
+          const topTokens = await getTopTradedTokens({ limit: 5 }); // Fetch top 5
+
+          let topTokensDataString = "Could not fetch top traded token data or no significant activity found.";
+          if (topTokens && topTokens.length > 0) {
+            topTokensDataString = topTokens.map(token => {
+              const volume = token.volumeLastHour ? `$${Math.round(token.volumeLastHour).toLocaleString()}` : 'N/A';
+              const priceChange = token.priceChangeLastHour ? `${token.priceChangeLastHour.toFixed(2)}%` : 'N/A';
+              const price = token.priceUsd ? `$${token.priceUsd.toFixed(4)}` : 'N/A';
+              return `- ${token.baseTokenSymbol}/${token.quoteTokenSymbol} on ${token.dexId} (Pair: ${token.pairAddress.substring(0,6)}...): Vol (1H): ${volume}, Price: ${price}, Change (1H): ${priceChange}. URL: ${token.pairUrl}`;
+            }).join('\n');
+          }
+
+          const systemPromptForTopTokens = `You are ChainWhisper, an AI assistant. The user asked about top traded tokens on Base DEXs. You have been provided with a list of top pairs by 1-hour volume from DexScreener. Present this information clearly and conversationally. For each pair, mention the tokens, the DEX, its 1-hour volume, current price, and 1-hour price change. Also provide the DexScreener URL for the user to explore further. If no data was found, state that.`;
+
+          const promptForTopTokens = `
+System: ${systemPromptForTopTokens}
+User: My query was: "${userQueryForPrompt}"
+Here is the list of top traded token pairs on Base DEXs by 1-hour volume:
+${topTokensDataString}
+---
+Please present this information about top traded tokens.
+`;
+          // console.log("[Debug Groq] Top Traded Tokens Prompt:", promptForTopTokens);
+          const aiResponse = await callGroqAPI(promptForTopTokens);
+          return aiResponse;
+
+        } catch (error) {
+          console.error("[Error App] Failed to fetch or process top traded tokens:", error);
+          return "Sorry, I encountered an error while trying to fetch data for top traded tokens. Please try again later.";
+        }
+      }
       else {
         // General query handler (if no NFT mint keyword matched)
-        console.log("[Debug Groq] No specific intent matched (NFT mints, network status). Routing to general Groq handler.");
+        console.log("[Debug Groq] No specific intent matched (NFT mints, network status, top tokens). Routing to general Groq handler.");
         const generalQuerySystemPrompt = "You are ChainWhisper, an AI assistant knowledgeable about the Base blockchain and general crypto concepts. The user has a general question. Please answer conversationally and helpfully. If the question asks for specific, real-time, aggregate on-chain statistics you don't have direct access to (e.g., 'how many NFTs were minted today across the whole network?'), politely explain your current primary capability is analyzing specific wallet addresses when provided, and that you can answer conceptual questions, but you cannot provide that specific live aggregate statistic. You can offer to analyze a specific address if the user provides one.";
         const promptForGeneralQuery = `
 System: ${generalQuerySystemPrompt}

@@ -38,6 +38,20 @@ interface NftMintEvent {
   tokenType: "erc721" | "erc1155" | "unknown";
 }
 
+interface TopTradingPairData {
+  chainId: string;
+  dexId: string;
+  pairAddress: string;
+  baseTokenSymbol: string;
+  baseTokenAddress: string;
+  quoteTokenSymbol: string;
+  quoteTokenAddress: string;
+  priceUsd?: number;
+  volumeLastHour?: number;
+  priceChangeLastHour?: number;
+  pairUrl: string;
+}
+
 const ALCHEMY_API_KEY = 'jFa3wNWqfvKYb9GrCUtmk';
 
 export const useAlchemy = () => {
@@ -176,6 +190,67 @@ export const useAlchemy = () => {
     } catch (error) {
       console.error('Alchemy API error:', error);
       throw new Error('Failed to fetch wallet data from Alchemy');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const getTopTradedTokens = async (options?: { limit?: number }): Promise<TopTradingPairData[] | null> => {
+    setIsLoading(true); // Reuse isLoading state from useAlchemy
+    const limit = options?.limit || 5; // Default to top 5 pairs
+    // Query for popular pairs on Base. This might need refinement.
+    // A more robust approach might involve multiple queries for common quote tokens
+    // (e.g., WETH, USDC on Base) if 'q=base' is not effective.
+    const searchQuery = "base"; // Initial simple query
+    const dexScreenerUrl = `https://api.dexscreener.com/latest/dex/search?q=${searchQuery}`;
+
+    console.log(`[Debug DexScreener] Fetching top traded tokens with query: ${searchQuery}`);
+
+    try {
+      const response = await fetch(dexScreenerUrl);
+
+      if (!response.ok) {
+        const errorBody = await response.text();
+        console.error('[Error DexScreener] API call failed:', response.status, response.statusText, errorBody);
+        throw new Error(`DexScreener API call failed: ${response.status} ${errorBody}`);
+      }
+
+      const data = await response.json();
+      // console.log('[Debug DexScreener] Raw API Response:', JSON.stringify(data, null, 2)); // For deep debugging
+
+      if (!data.pairs || data.pairs.length === 0) {
+        console.log('[Debug DexScreener] No pairs found for the query.');
+        return [];
+      }
+
+      const basePairs = data.pairs.filter((pair: any) => pair.chainId === 'base');
+       // console.log(`[Debug DexScreener] Found ${basePairs.length} pairs on Base chain.`);
+
+      const processedPairs: TopTradingPairData[] = basePairs.map((pair: any) => ({
+        chainId: pair.chainId,
+        dexId: pair.dexId,
+        pairAddress: pair.pairAddress,
+        baseTokenSymbol: pair.baseToken?.symbol,
+        baseTokenAddress: pair.baseToken?.address,
+        quoteTokenSymbol: pair.quoteToken?.symbol,
+        quoteTokenAddress: pair.quoteToken?.address,
+        priceUsd: pair.priceUsd ? parseFloat(pair.priceUsd) : undefined,
+        volumeLastHour: pair.volume?.h1, // Assuming h1 is hourly volume in USD
+        priceChangeLastHour: pair.priceChange?.h1,
+        pairUrl: pair.url,
+      }));
+
+      // Sort by volume in the last hour (descending)
+      processedPairs.sort((a, b) => (b.volumeLastHour || 0) - (a.volumeLastHour || 0));
+
+      const topPairs = processedPairs.slice(0, limit);
+      console.log(`[Debug DexScreener] Returning top ${topPairs.length} traded pairs.`);
+      return topPairs;
+
+    } catch (error: any) {
+      console.error('[Error DexScreener] Error in getTopTradedTokens:', error);
+      // In a real app, might want to distinguish error types or re-throw
+      return null; // Or throw error to be caught by caller
     } finally {
       setIsLoading(false);
     }
@@ -380,5 +455,5 @@ export const useAlchemy = () => {
     }
   };
 
-  return { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, isLoading };
+  return { analyzeWallet, getRecentNftMints, getCurrentGasPrice, getLatestBlockNumber, getTopTradedTokens, isLoading };
 };
