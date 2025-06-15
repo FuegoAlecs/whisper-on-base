@@ -27,11 +27,13 @@ const Index = () => {
         
         {/* Sidebar */}
         <aside className={`
-          fixed right-0 top-16 bottom-16 z-50 w-80 transform transition-transform duration-300 ease-in-out
-          lg:relative lg:top-0 lg:bottom-0 lg:translate-x-0 lg:block
+          fixed right-0 top-0 bottom-0 z-50 w-72 sm:w-80 transform transition-transform duration-300 ease-in-out
+          lg:relative lg:w-80 lg:translate-x-0 lg:block
           ${sidebarOpen ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}
         `}>
-          <Sidebar onClose={() => setSidebarOpen(false)} />
+          <div className="h-full mt-12 sm:mt-14 lg:mt-16 mb-12 sm:mb-14 lg:mb-16">
+            <Sidebar onClose={() => setSidebarOpen(false)} />
+          </div>
         </aside>
       </div>
       
