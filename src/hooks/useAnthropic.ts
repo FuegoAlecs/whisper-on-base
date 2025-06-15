@@ -2,34 +2,78 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
+const CONCEPTUAL_AI_API_KEY = "USER_WOULD_PROVIDE_A_REAL_KEY_HERE_OR_VIA_BACKEND";
+
 interface AnthropicMessage {
   role: 'user' | 'assistant' | 'system';
   content: string;
 }
 
+const constructAIWalletAnalysisPrompt = (userQuery: string, walletData: any): string => {
+  const tokenBalancesString = walletData.tokenBalances.length > 0
+    ? walletData.tokenBalances.map((token: any) =>
+        `- Contract: ${token.contractAddress}, Balance: ${(parseFloat(token.tokenBalance) / Math.pow(10, token.decimals || 18)).toFixed(6)} ${token.symbol || '[Symbol Missing]'} (${token.name || '[Name Missing]'})${token.decimals ? `, Decimals: ${token.decimals}` : ''}`
+      ).join('\n')
+    : "No significant token balances found.";
+
+  const prompt = `
+System: You are ChainWhisper, an AI assistant specializing in analyzing Ethereum wallet addresses on the Base network. Your goal is to provide clear, conversational, and insightful summaries based on data retrieved from Alchemy. Be factual and avoid speculation if data is missing. If token names or symbols are shown as '[Name Missing]' or '[Symbol Missing]', it means this information was not available from the data source; acknowledge this if relevant in your analysis.
+
+User:
+My query was: "${userQuery}"
+
+Here is the data fetched from Alchemy for the wallet address ${walletData.address}:
+
+Wallet Address: ${walletData.address}
+Account Type: ${walletData.isContract ? 'Smart Contract' : 'Externally Owned Account (EOA)'}
+ETH Balance: ${walletData.ethBalance} ETH
+Transaction Count: ${walletData.transactionCount}
+
+Token Holdings:
+${tokenBalancesString}
+---
+
+Based on my query and the provided Alchemy data, please:
+1. Provide a conversational summary of this wallet's key characteristics.
+2. Highlight any interesting insights or patterns you observe (e.g., activity level, types of tokens held, significant ETH balance).
+3. If symbols or names are missing for tokens with balances (indicated by '[Symbol Missing]' or '[Name Missing]'), briefly explain in your own words that this metadata wasn't provided.
+4. Conclude by suggesting 1-2 relevant follow-up questions a user might have about this wallet, if appropriate. For example, "Would you like to see recent transactions?" or "Are you interested in its interaction with any specific DeFi protocols?"
+`;
+  // console.log('[Debug AI] Constructed Prompt:', prompt); // Optional: for debugging prompt
+  return prompt;
+};
+
+const callConceptualAIAPI = async (prompt: string): Promise<string> => {
+  console.log("[Debug AI] Calling Conceptual AI API with prompt (first 100 chars):", prompt.substring(0, 100));
+  // Simulate API call delay
+  await new Promise(resolve => setTimeout(resolve, 1000));
+
+  // In a real scenario, this would be:
+  // const response = await fetch('AI_SERVICE_ENDPOINT', {
+  //   method: 'POST',
+  //   headers: {
+  //     'Content-Type': 'application/json',
+  //     'Authorization': `Bearer ${CONCEPTUAL_AI_API_KEY}` // Or other auth method
+  //   },
+  //   body: JSON.stringify({ prompt: prompt, model: "chosen-model-name", /* other params */ })
+  // });
+  // if (!response.ok) { throw new Error('AI API call failed'); }
+  // const aiData = await response.json();
+  // return aiData.choices[0].text; // Or however the specific AI API returns data
+
+  // For now, return a MOCKED response:
+  const mockAIResponse = `This is a simulated AI response based on the data for the wallet.
+It would normally provide a conversational summary and insights here.
+For instance, it might say: 'This wallet (${prompt.match(/Wallet Address: (0x[a-fA-F0-9]{40})/)?.[1]}) shows X ETH and Y transactions. It holds Z tokens, some of which we don't have symbol data for. Would you like to dive deeper into its transaction history?'`;
+  console.log("[Debug AI] Returning Mocked AI Response:", mockAIResponse);
+  return mockAIResponse;
+};
+
 export const useAnthropic = () => {
   const [isLoading, setIsLoading] = useState(false);
-  const [lastAnalysedAddress, setLastAnalysedAddress] = useState<string | null>(null);
-  const [followUpPromptActive, setFollowUpPromptActive] = useState<boolean>(false);
   const { analyzeWallet, isLoading: alchemyLoading } = useAlchemy();
 
   const sendMessage = async (messages: AnthropicMessage[], apiKey?: string): Promise<string> => {
-    if (followUpPromptActive) {
-      const currentInput = messages[messages.length - 1].content.toLowerCase().trim();
-      const affirmatives = ["proceed", "yes", "ok", "sure", "continue", "yep", "yeah", "y"];
-
-      if (affirmatives.includes(currentInput)) {
-        setFollowUpPromptActive(false); // Reset the prompt
-        // It's important to use lastAnalysedAddress here, which is in scope from the hook's state
-        return `Okay! For wallet ${lastAnalysedAddress || 'the previously mentioned wallet'}, what specific details are you interested in? For example, you could ask for 'show recent transactions', 'details about [TOKEN_SYMBOL] transfers', or 'interactions with [DEFI_PROTOCOL_NAME]'. Please be specific, as I'm still learning to fetch advanced details!`;
-      } else {
-        // If prompt was active but input is not a simple affirmative,
-        // assume it's a new query or a more complex follow-up.
-        // Reset prompt and continue to process normally.
-        setFollowUpPromptActive(false);
-        // No return here, let it fall through to normal processing.
-      }
-    }
     setIsLoading(true);
     
     try {
@@ -50,76 +94,10 @@ export const useAnthropic = () => {
           if (walletData) {
             console.log('Wallet analysis successful:', walletData);
             
-            const tokenList = walletData.tokenBalances.length > 0 
-              ? walletData.tokenBalances.map(token => {
-                  const balance = parseFloat(token.tokenBalance) / Math.pow(10, token.decimals || 18);
-                  return `• ${token.symbol || 'Unknown'}: ${balance.toFixed(6)}`;
-                }).join('\n')
-              : '• No significant token balances found';
-
-            let adviceNote = "";
-            const isEthZero = parseFloat(walletData.ethBalance) === 0;
-            const isTxCountZero = walletData.transactionCount === 0;
-            const unknownTokenCount = walletData.tokenBalances.filter(t => t.symbol === '[Symbol Missing]').length; // Keep for hasMostlyUnknownTokens
-            const hasMostlyUnknownTokens = walletData.tokenBalances.length > 0 &&
-                                         (unknownTokenCount === walletData.tokenBalances.length || unknownTokenCount > walletData.tokenBalances.length / 2);
-
-            const unknownSymbolCountNonZeroBalance = walletData.tokenBalances.filter(
-              t => (t.symbol === '[Symbol Missing]' || t.name === '[Name Missing]') && parseFloat(t.tokenBalance) > 0
-            ).length;
-            const totalTokensWithBalance = walletData.tokenBalances.filter(t => parseFloat(t.tokenBalance) > 0).length;
-
-            let specificSymbolNote = "";
-            if (totalTokensWithBalance > 0 && unknownSymbolCountNonZeroBalance === totalTokensWithBalance) {
-              // All tokens with a balance are missing symbols/names
-              specificSymbolNote = `
-
-⚠️ **Token Info:** For some or all tokens listed, names and symbols couldn't be displayed. This might be due to the specifics of your Alchemy API key's service tier or because the metadata isn't available from Alchemy for these particular tokens on Base. The balances shown are from the API.`;
-            } else if (unknownSymbolCountNonZeroBalance > 0) {
-              // Some tokens with balance are missing symbols/names
-               specificSymbolNote = `
-
-⚠️ **Token Info:** For some tokens, names/symbols are missing. This could be due to your Alchemy API key's service tier or metadata availability from Alchemy.`;
-            }
-
-            // Existing sparseness check
-            if (isEthZero && isTxCountZero && (walletData.tokenBalances.length === 0 || hasMostlyUnknownTokens)) {
-              adviceNote = `
-
-⚠️ **Note:** The data for this wallet appears limited or may be showing default values. This could be due to several reasons:
-        • The wallet address might be new, inactive on the Base network, or not yet indexed.
-        • If you've entered your own Alchemy API key, please ensure it's correctly configured for Base Mainnet and has the necessary permissions for fetching balances and transaction history.
-        • There might be temporary network or API provider issues.
-      Please double-check the wallet address and your API key settings.`;
-
-              // If sparse note is added, and there's also a specific symbol issue for the (few) tokens present.
-              if (specificSymbolNote !== "" && hasMostlyUnknownTokens) {
-                adviceNote += specificSymbolNote; // Append the symbol note to the general sparse note.
-              }
-
-            } else if (specificSymbolNote !== "") {
-              // Data is not generally sparse, but there's a symbol-specific issue.
-              adviceNote = specificSymbolNote;
-            }
-
-            setLastAnalysedAddress(address); // Set the address of the wallet that was just analyzed
-            setFollowUpPromptActive(true);   // Indicate that the follow-up prompt is now active
-            return `🔍 **Wallet Analysis for ${address}**
-
-📊 **Overview:**
-• ETH Balance: ${parseFloat(walletData.ethBalance).toFixed(6)} ETH
-• Transaction Count: ${walletData.transactionCount} transactions
-• Account Type: ${walletData.isContract ? 'Smart Contract' : 'Externally Owned Account (EOA)'}
-
-💰 **Token Holdings:**
-${tokenList}
-
-🎯 **Insights:**
-• This wallet ${walletData.transactionCount > 100 ? 'appears to be actively used' : walletData.transactionCount > 10 ? 'has moderate activity' : 'has minimal activity'}
-• ETH balance suggests ${parseFloat(walletData.ethBalance) > 0.1 ? 'active user with significant holdings' : parseFloat(walletData.ethBalance) > 0.01 ? 'moderate ETH holdings' : 'minimal ETH holdings'}
-• ${walletData.tokenBalances.length > 0 ? 'Holds multiple tokens indicating DeFi participation' : 'Primarily holds ETH with no significant token holdings'}
-
-Would you like me to analyze specific transactions, DeFi positions, or provide more detailed insights for this wallet?${adviceNote}`;
+            // const userMessage = messages[messages.length - 1].content; // Already exists
+            const prompt = constructAIWalletAnalysisPrompt(userMessage, walletData);
+            const aiResponse = await callConceptualAIAPI(prompt);
+            return aiResponse; // This is the new return for successful wallet analysis
           } else {
             return `❌ Unable to retrieve data for wallet ${address}. The wallet may be empty or there might be an API issue.`;
           }
