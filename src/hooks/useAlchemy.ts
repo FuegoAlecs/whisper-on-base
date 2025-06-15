@@ -22,6 +22,8 @@ interface WalletAnalysis {
   isContract: boolean;
 }
 
+const ALCHEMY_API_KEY = 'jFa3wNWqfvKYb9GrCUtmk';
+
 export const useAlchemy = () => {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -33,37 +35,10 @@ export const useAlchemy = () => {
     setIsLoading(true);
 
     try {
-      // For now, we'll use demo data until user provides Alchemy API key
-      if (!config?.apiKey) {
-        // Mock analysis with realistic Base data
-        return {
-          address,
-          ethBalance: '0.247891234567890123',
-          tokenBalances: [
-            {
-              contractAddress: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
-              tokenBalance: '150.75',
-              name: 'USD Coin',
-              symbol: 'USDC',
-              decimals: 6
-            },
-            {
-              contractAddress: '0x4200000000000000000000000000000000000006',
-              tokenBalance: '0.892345',
-              name: 'Wrapped Ether',
-              symbol: 'WETH',
-              decimals: 18
-            }
-          ],
-          transactionCount: 127,
-          isContract: false
-        };
-      }
-
-      // Real Alchemy API calls would go here
-      const baseUrl = config.network === 'base-sepolia' 
-        ? `https://base-sepolia.g.alchemy.com/v2/${config.apiKey}`
-        : `https://base-mainnet.g.alchemy.com/v2/${config.apiKey}`;
+      const apiKey = config?.apiKey || ALCHEMY_API_KEY;
+      const baseUrl = config?.network === 'base-sepolia' 
+        ? `https://base-sepolia.g.alchemy.com/v2/${apiKey}`
+        : `https://base-mainnet.g.alchemy.com/v2/${apiKey}`;
 
       // Get ETH balance
       const ethBalanceResponse = await fetch(baseUrl, {
