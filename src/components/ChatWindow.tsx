@@ -1,3 +1,4 @@
+
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -5,7 +6,7 @@ import { Send, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import QueryExamples from "./QueryExamples";
-import { useHuggingFace } from "@/hooks/useHuggingFace";
+import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -19,7 +20,7 @@ const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, isLoading } = useHuggingFace();
+  const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
 
   const scrollToBottom = () => {
@@ -69,19 +70,9 @@ const ChatWindow = () => {
       console.error('Error sending message:', error);
       toast({
         title: "Connection Issue",
-        description: "Using fallback response. The AI models are warming up - try again in a moment!",
+        description: "There was a problem processing your message. Please try again!",
         variant: "default",
       });
-      
-      // Add a fallback message
-      const fallbackMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        text: "🔗 ChainWhisper here! I'm currently connecting to the Base network data sources. While I warm up, feel free to ask about:\n\n• Wallet addresses and their activity\n• NFT collection analysis\n• DeFi protocol interactions\n• Gas usage patterns\n• Token movements\n\nTry your question again in a moment! 📊",
-        isUser: false,
-        timestamp: new Date().toLocaleTimeString()
-      };
-      
-      setMessages(prev => [...prev, fallbackMessage]);
     }
   };
 
