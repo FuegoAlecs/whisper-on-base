@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,6 +5,7 @@ import { Send, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import QueryExamples from "./QueryExamples";
+import AlchemyKeyInput from "./AlchemyKeyInput";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 
@@ -19,9 +19,20 @@ interface Message {
 const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
+  const [alchemyApiKey, setAlchemyApiKey] = useState<string>("");
+  const [showAlchemyInput, setShowAlchemyInput] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
+
+  // Check for saved API key on component mount
+  useEffect(() => {
+    const savedKey = localStorage.getItem('chainwhisper_alchemy_key');
+    if (savedKey) {
+      setAlchemyApiKey(savedKey);
+      setShowAlchemyInput(false);
+    }
+  }, []);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -30,6 +41,16 @@ const ChatWindow = () => {
   useEffect(() => {
     scrollToBottom();
   }, [messages, isLoading]);
+
+  const handleAlchemyKeySubmit = (apiKey: string) => {
+    setAlchemyApiKey(apiKey);
+    setShowAlchemyInput(false);
+    toast({
+      title: "Alchemy Connected!",
+      description: "You can now analyze real wallet data on Base blockchain.",
+      variant: "default",
+    });
+  };
 
   const handleSend = async () => {
     if (!inputValue.trim() || isLoading) return;
@@ -96,6 +117,11 @@ const ChatWindow = () => {
               <Sparkles className="h-6 w-6 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-2 sm:mb-4" />
               <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Hi, I'm ChainWhisper</h3>
               <p className="text-gray-400 text-xs sm:text-base">Your AI oracle for Base network data</p>
+              {!alchemyApiKey && (
+                <div className="mt-2 text-yellow-400 text-xs">
+                  Connect Alchemy below for real blockchain data analysis
+                </div>
+              )}
             </div>
             <QueryExamples onExampleClick={handleExampleClick} />
           </div>
@@ -113,6 +139,12 @@ const ChatWindow = () => {
         {isLoading && <LoadingMessage />}
         <div ref={messagesEndRef} />
       </div>
+
+      {/* Show Alchemy input if no API key is set */}
+      <AlchemyKeyInput 
+        onApiKeySubmit={handleAlchemyKeySubmit}
+        isVisible={showAlchemyInput}
+      />
 
       <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-2 sm:p-4 lg:p-6">
         <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto">
