@@ -10,26 +10,26 @@ interface SidebarProps {
 
 const Sidebar = ({ onClose }: SidebarProps) => {
   const liveStats = [
-    { label: "Markets", value: "Open", icon: TrendingUp, trend: "+2.3%" },
-    { label: "News", value: "Live", icon: Activity, trend: "24/7" },
-    { label: "AI Load", value: "Normal", icon: Zap, trend: "98%" },
-    { label: "Response", value: "Fast", icon: Clock, trend: "<1s" }
+    { label: "Base Blocks", value: "12,445,789", icon: TrendingUp, trend: "+1,234" },
+    { label: "Gas Price", value: "0.23 gwei", icon: Activity, trend: "Low" },
+    { label: "Active Wallets", value: "45.2K", icon: Zap, trend: "+2.3%" },
+    { label: "Oracle Load", value: "Normal", icon: Clock, trend: "98%" }
   ];
 
   const recentActivity = [
-    { type: "news", title: "Tech earnings season begins", summary: "Major tech companies report Q4 results", time: "2m ago" },
-    { type: "market", title: "S&P 500 hits new high", summary: "Index reaches record levels", time: "5m ago" },
-    { type: "crypto", title: "Bitcoin volatility increases", summary: "Price swings amid regulation news", time: "8m ago" },
-    { type: "ai", title: "New AI breakthrough announced", summary: "Researchers achieve quantum advantage", time: "12m ago" }
+    { type: "nft", title: "BasePunks surge detected", summary: "234 NFTs minted in last 10 minutes", time: "2m ago" },
+    { type: "defi", title: "Large Uniswap swap", summary: "1,250 ETH → USDC on Base DEX", time: "5m ago" },
+    { type: "bridge", title: "Bridge activity spike", summary: "15.2M USDC bridged to Base", time: "8m ago" },
+    { type: "whale", title: "Whale wallet detected", summary: "New wallet with 500+ ETH created", time: "12m ago" }
   ];
 
   const getActivityIcon = (type: string) => {
     switch (type) {
-      case "news": return "📰";
-      case "market": return "📈";
-      case "crypto": return "₿";
-      case "ai": return "🤖";
-      default: return "📊";
+      case "nft": return "🎨";
+      case "defi": return "🔄";
+      case "bridge": return "🌉";
+      case "whale": return "🐋";
+      default: return "⚡";
     }
   };
 
@@ -38,7 +38,7 @@ const Sidebar = ({ onClose }: SidebarProps) => {
       <div className="p-4 lg:p-6 space-y-4 lg:space-y-6">
         {/* Mobile Close Button */}
         <div className="flex items-center justify-between lg:hidden">
-          <h2 className="text-lg font-semibold text-white">Real-time Data</h2>
+          <h2 className="text-lg font-semibold text-white">Base Network</h2>
           <Button
             variant="ghost"
             size="sm"
@@ -49,11 +49,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           </Button>
         </div>
 
-        {/* System Status */}
+        {/* Live Base Stats */}
         <div>
           <h3 className="text-base lg:text-lg font-semibold text-white mb-3 lg:mb-4 flex items-center gap-2">
             <Activity className="h-4 w-4 lg:h-5 lg:w-5 text-orange-500" />
-            System Status
+            Live Base Stats
           </h3>
           <div className="grid grid-cols-1 gap-2 lg:gap-3">
             {liveStats.map((stat, index) => {
@@ -79,11 +79,11 @@ const Sidebar = ({ onClose }: SidebarProps) => {
           </div>
         </div>
 
-        {/* Recent Activity */}
+        {/* Recent Chain Activity */}
         <div>
           <h3 className="text-base lg:text-lg font-semibold text-white mb-3 lg:mb-4 flex items-center gap-2">
             <Clock className="h-4 w-4 lg:h-5 lg:w-5 text-orange-500" />
-            Live Updates
+            Recent Activity
           </h3>
           <div className="space-y-2 lg:space-y-3">
             {recentActivity.map((activity, index) => (

@@ -46,7 +46,7 @@ const ChatWindow = () => {
     setTimeout(() => {
       const aiResponse: Message = {
         id: (Date.now() + 1).toString(),
-        text: `Here's what I found:\n\n${getMockResponse(inputValue)}`,
+        text: `Here's what I found on Base:\n\n${getMockResponse(inputValue)}`,
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       };
@@ -56,16 +56,16 @@ const ChatWindow = () => {
   };
 
   const getMockResponse = (query: string) => {
-    if (query.toLowerCase().includes("weather")) {
-      return "🌤️ Current weather conditions:\n• Temperature: 72°F (22°C)\n• Conditions: Partly cloudy\n• Humidity: 65%\n• Wind: 8 mph SW";
+    if (query.toLowerCase().includes("nft")) {
+      return "🎨 NFT Activity Analysis:\n• 1,247 NFTs minted in the last hour\n• Top collection: BasePunks (234 mints)\n• Average mint price: 0.05 ETH\n• Most active wallet: 0x742d...8f3a (12 mints)";
     }
-    if (query.toLowerCase().includes("news")) {
-      return "📰 Latest headlines:\n• Tech: Apple announces new M4 chip\n• Markets: S&P 500 reaches new high\n• Science: Webb telescope discovers new exoplanet\n• Sports: World Cup qualifiers begin";
+    if (query.toLowerCase().includes("gas")) {
+      return "⛽ Gas Tracker:\n• Current Base gas: 0.23 gwei\n• Top gas spender: 0x1a2b...9c8d (2.1 ETH fees)\n• Average transaction cost: $0.12\n• Peak usage: 14:30 UTC (1.2M gas/block)";
     }
-    if (query.toLowerCase().includes("crypto")) {
-      return "₿ Crypto market update:\n• Bitcoin: $43,250 (+2.1%)\n• Ethereum: $2,650 (+1.8%)\n• Market cap: $1.7T\n• Fear & Greed Index: 58 (Neutral)";
+    if (query.toLowerCase().includes("tornado")) {
+      return "🌪️ Tornado Cash Analysis:\n• Address flagged: Yes\n• Last interaction: 2023-08-15\n• Risk score: High\n• Mixer volume: 150.5 ETH";
     }
-    return "🤖 I'm Grok, your AI assistant. I can help with real-time information, analysis, and more. What would you like to know?";
+    return "🔍 ChainWhisper Analysis:\nI'm your AI oracle for Base network data. Ask me about NFTs, DeFi, wallets, or any on-chain activity and I'll analyze it for you.";
   };
 
   const handleExampleClick = (query: string) => {
@@ -86,8 +86,8 @@ const ChatWindow = () => {
           <div className="text-center py-8 lg:py-12 px-4">
             <div className="mb-6">
               <Sparkles className="h-10 w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-4" />
-              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2">Hi, I'm Grok</h3>
-              <p className="text-gray-400 text-sm lg:text-base">A real-time AI assistant by xAI</p>
+              <h3 className="text-xl lg:text-2xl font-bold text-white mb-2">Hi, I'm ChainWhisper</h3>
+              <p className="text-gray-400 text-sm lg:text-base">Your AI oracle for Base network data</p>
             </div>
             <QueryExamples onExampleClick={handleExampleClick} />
           </div>
@@ -113,7 +113,7 @@ const ChatWindow = () => {
               value={inputValue}
               onChange={(e) => setInputValue(e.target.value)}
               onKeyPress={handleKeyPress}
-              placeholder="Ask Grok anything..."
+              placeholder="Ask a question about on-chain activity..."
               className="bg-gray-900 border-gray-700 text-white placeholder-gray-500 focus:border-orange-500 focus:ring-orange-500/20 rounded-lg text-sm lg:text-base py-3 lg:py-4"
               disabled={isLoading}
             />
@@ -124,7 +124,7 @@ const ChatWindow = () => {
             className="bg-orange-600 hover:bg-orange-700 text-white px-4 lg:px-6 py-3 lg:py-4 rounded-lg transition-all duration-200"
           >
             <Send className="h-4 w-4 lg:h-5 lg:w-5" />
-            <span className="hidden sm:inline ml-2">Send</span>
+            <span className="hidden sm:inline ml-2">Whisper</span>
           </Button>
         </div>
       </div>

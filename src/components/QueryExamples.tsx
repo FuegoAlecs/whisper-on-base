@@ -7,12 +7,12 @@ interface QueryExamplesProps {
 
 const QueryExamples = ({ onExampleClick }: QueryExamplesProps) => {
   const examples = [
-    "What's happening in the world today?",
-    "Explain quantum computing simply",
-    "Latest crypto market trends",
-    "How does AI work?",
-    "Climate change updates",
-    "Space exploration news"
+    "What wallet minted most NFTs today?",
+    "Top gas spenders on Base",
+    "Did 0x742d35Cc6634C0532925a3b8F39319BC1000e8f3a interact with Tornado Cash?",
+    "How many wallets minted NFTs in the last hour?",
+    "Latest Base DeFi activity",
+    "Which tokens did 0x1a2b...9c8d dump this week?"
   ];
 
   return (

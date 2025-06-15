@@ -7,11 +7,11 @@ const Footer = () => {
       <div className="max-w-7xl mx-auto">
         <div className="flex flex-col sm:flex-row items-center justify-between gap-2 lg:gap-4">
           <div className="flex items-center gap-2 lg:gap-4 text-xs lg:text-sm text-gray-400">
-            <span>Built by xAI</span>
+            <span>Built with Alchemy</span>
             <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">Grok</span>
+            <span className="hidden sm:inline">ChainWhisper on Base</span>
             <span className="hidden sm:inline">•</span>
-            <span className="hidden sm:inline">Real-time AI</span>
+            <span className="hidden sm:inline">AI Oracle</span>
           </div>
           
           <div className="flex items-center gap-3 lg:gap-4">
@@ -19,7 +19,7 @@ const Footer = () => {
               href="#" 
               className="flex items-center gap-1 text-xs lg:text-sm text-gray-400 hover:text-orange-400 transition-colors"
             >
-              About
+              Base
               <ExternalLink className="h-3 w-3" />
             </a>
             <a 

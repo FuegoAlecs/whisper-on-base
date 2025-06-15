@@ -17,8 +17,8 @@ const Header = ({ onSidebarToggle }: HeaderProps) => {
               <Zap className="h-6 w-6 lg:h-8 lg:w-8 text-orange-500" />
             </div>
             <div>
-              <h1 className="text-lg lg:text-2xl font-bold text-white">Grok</h1>
-              <p className="text-xs lg:text-sm text-gray-400 hidden sm:block">Real-time AI for everything</p>
+              <h1 className="text-lg lg:text-2xl font-bold text-white">ChainWhisper</h1>
+              <p className="text-xs lg:text-sm text-gray-400 hidden sm:block">Ask-Anything for Base Data</p>
             </div>
           </div>
           
