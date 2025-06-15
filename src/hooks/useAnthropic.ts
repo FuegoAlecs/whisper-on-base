@@ -2,7 +2,7 @@
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
-const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "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";
+const USER_PROVIDED_GROQ_API_KEY_PLACEHOLDER = "PASTE_YOUR_GROQ_API_KEY_HERE_FOR_LOCAL_TESTING_ONLY";
 // Important: Remind user not to commit this key.
 
 interface AnthropicMessage {
@@ -172,7 +172,7 @@ Please verify the address and try again. I can help with other Base blockchain a
           let mintsDataString = "No recent mints found or data is unavailable.";
           if (mints && mints.length > 0) {
             mintsDataString = mints.map(mint =>
-              `- Tx: ${mint.transactionHash.substring(0, 10)}..., Minter: ${mint.minterAddress.substring(0,10)}..., NFT: ${mint.nftContractAddress ? mint.nftContractAddress.substring(0,10) : 'N/A'}..., TokenID: ${mint.tokenId ? mint.tokenId.substring(0,5) : 'N/A'}, Collection: ${mint.collectionName || '[Name Missing]'}`
+              `- Tx: ${mint.transactionHash.substring(0, 10)}..., Minter: ${mint.minterAddress}, NFT Contract: ${mint.nftContractAddress || 'N/A'}, TokenID: ${mint.tokenId ? mint.tokenId.substring(0,5) : 'N/A'}, Collection: ${mint.collectionName || '[Name Missing]'}`
             ).join('\n');
           }
 
