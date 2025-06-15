@@ -91,7 +91,7 @@ const ChatWindow = () => {
               <Sparkles className="h-6 w-6 sm:h-10 sm:w-10 lg:h-12 lg:w-12 text-orange-500 mx-auto mb-2 sm:mb-4" />
               <h3 className="text-base sm:text-xl lg:text-2xl font-bold text-white mb-1 sm:mb-2">Hi, I'm ChainWhisper</h3>
               <p className="text-gray-400 text-xs sm:text-base">Your AI oracle for Base network data</p>
-              <div className="mt-2 text-green-400 text-xs">
+              <div className="mt-2 text-white text-xs">
                 Connected to Alchemy for real blockchain data analysis
               </div>
             </div>

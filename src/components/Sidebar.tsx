@@ -5,6 +5,13 @@ import { Badge } from "@/components/ui/badge";
 import { Activity, TrendingUp, Zap, Clock, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
+// LocalStorage keys and cache duration
+const CACHED_BLOCK_NUMBER_KEY = 'cachedBlockNumber';
+const LAST_FETCH_BLOCK_KEY = 'lastFetchBlockTimestamp';
+const CACHED_GAS_PRICE_KEY = 'cachedGasPrice';
+const LAST_FETCH_GAS_KEY = 'lastFetchGasTimestamp';
+const ONE_HOUR_MS = 60 * 60 * 1000;
+
 interface SidebarProps {
   onClose: () => void;
 }
@@ -29,32 +36,71 @@ const Sidebar = ({ onClose }: SidebarProps) => {
     let isMounted = true; // To prevent state updates on unmounted component
     const fetchNetworkData = async () => {
       console.log("[Sidebar Effect] Fetching network data...");
+      const now = Date.now();
+
+      // Fetch Block Number
       try {
-        const latestBlock = await getLatestBlockNumber();
-        console.log("[Sidebar Effect] getLatestBlockNumber returned:", latestBlock);
-        if (isMounted && latestBlock) {
-          setBlockNumber(latestBlock);
-          setBlockTrend(""); // Clear mock trend
+        const lastFetchBlockStr = localStorage.getItem(LAST_FETCH_BLOCK_KEY);
+        const cachedBlock = localStorage.getItem(CACHED_BLOCK_NUMBER_KEY);
+        const lastFetchBlock = lastFetchBlockStr ? parseInt(lastFetchBlockStr, 10) : 0;
+
+        if (cachedBlock && isMounted) {
+          setBlockNumber(cachedBlock);
+          setBlockTrend("");
+        }
+
+        if (!lastFetchBlock || now - lastFetchBlock > ONE_HOUR_MS || !cachedBlock) {
+          console.log("[Sidebar Effect] Fetching new block number...");
+          const latestBlock = await getLatestBlockNumber();
+          console.log("[Sidebar Effect] getLatestBlockNumber returned:", latestBlock);
+          if (isMounted && latestBlock) {
+            setBlockNumber(latestBlock);
+            localStorage.setItem(CACHED_BLOCK_NUMBER_KEY, latestBlock);
+            localStorage.setItem(LAST_FETCH_BLOCK_KEY, now.toString());
+          }
+        } else {
+          console.log("[Sidebar Effect] Using cached block number.");
         }
       } catch (error) {
         if (isMounted) {
           console.error("[Sidebar Effect] Error fetching block for sidebar:", error);
-          setBlockNumber("Error"); setBlockTrend("");
+          setBlockNumber(localStorage.getItem(CACHED_BLOCK_NUMBER_KEY) || "Error"); // Fallback to cache on error
+          setBlockTrend("");
         }
       }
+
+      // Fetch Gas Price
       try {
-        const currentGas = await getCurrentGasPrice();
-        console.log("[Sidebar Effect] getCurrentGasPrice returned:", currentGas);
-        if (isMounted && currentGas) {
-          setGasPrice(currentGas);
-          setGasPriceTrend(""); // Clear mock trend
+        const lastFetchGasStr = localStorage.getItem(LAST_FETCH_GAS_KEY);
+        const cachedGas = localStorage.getItem(CACHED_GAS_PRICE_KEY);
+        const lastFetchGas = lastFetchGasStr ? parseInt(lastFetchGasStr, 10) : 0;
+
+        if (cachedGas && isMounted) {
+          setGasPrice(cachedGas);
+          setGasPriceTrend("");
+        }
+
+        if (!lastFetchGas || now - lastFetchGas > ONE_HOUR_MS || !cachedGas) {
+          console.log("[Sidebar Effect] Fetching new gas price...");
+          const currentGas = await getCurrentGasPrice();
+          console.log("[Sidebar Effect] getCurrentGasPrice returned:", currentGas);
+          if (isMounted && currentGas) {
+            setGasPrice(currentGas);
+            localStorage.setItem(CACHED_GAS_PRICE_KEY, currentGas);
+            localStorage.setItem(LAST_FETCH_GAS_KEY, now.toString());
+          }
+        } else {
+          console.log("[Sidebar Effect] Using cached gas price.");
         }
       } catch (error) {
         if (isMounted) {
           console.error("[Sidebar Effect] Error fetching gas for sidebar:", error);
-          setGasPrice("Error"); setGasPriceTrend("");
+          setGasPrice(localStorage.getItem(CACHED_GAS_PRICE_KEY) || "Error"); // Fallback to cache on error
+          setGasPriceTrend("");
         }
       }
+
+      // NFT Minting Activities (remains unchanged as per requirement)
       try {
         const mints = await getRecentNftMints({ limit: 3 }); // Fetch 3 recent mints
         console.log("[Sidebar Effect] getRecentNftMints returned raw:", mints);

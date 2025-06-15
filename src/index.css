@@ -41,6 +41,10 @@
     @apply border-border;
   }
 
+  html, body { /* Ensure black background */
+    background-color: #000000 !important;
+  }
+
   body {
     @apply bg-background text-foreground font-inter;
   }
