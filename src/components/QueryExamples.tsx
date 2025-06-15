@@ -17,6 +17,11 @@ const QueryExamples = ({ onExampleClick }: QueryExamplesProps) => {
 
   return (
     <div className="mb-4 sm:mb-6">
+      <div className="text-center mb-3">
+        <div className="inline-block bg-green-500/20 text-green-400 px-3 py-1 rounded-full text-xs font-medium mb-2">
+          🆓 Now completely free to use!
+        </div>
+      </div>
       <h3 className="text-xs sm:text-sm font-medium text-gray-400 mb-2 sm:mb-3 text-center lg:text-left">Try asking:</h3>
       <div className="flex flex-wrap gap-1.5 sm:gap-2 justify-center lg:justify-start">
         {examples.map((example, index) => (

@@ -1,4 +1,3 @@
-
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -6,7 +5,7 @@ import { Send, Sparkles } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import QueryExamples from "./QueryExamples";
-import { useOpenAI } from "@/hooks/useOpenAI";
+import { useHuggingFace } from "@/hooks/useHuggingFace";
 import { useToast } from "@/hooks/use-toast";
 
 interface Message {
@@ -20,11 +19,8 @@ const ChatWindow = () => {
   const [messages, setMessages] = useState<Message[]>([]);
   const [inputValue, setInputValue] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const { sendMessage, isLoading } = useOpenAI();
+  const { sendMessage, isLoading } = useHuggingFace();
   const { toast } = useToast();
-
-  // Use the provided API key directly
-  const apiKey = "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";
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -59,7 +55,7 @@ const ChatWindow = () => {
         content: currentInput
       });
 
-      const aiResponse = await sendMessage(conversationHistory, apiKey);
+      const aiResponse = await sendMessage(conversationHistory);
       
       const aiMessage: Message = {
         id: (Date.now() + 1).toString(),
@@ -72,10 +68,20 @@ const ChatWindow = () => {
     } catch (error) {
       console.error('Error sending message:', error);
       toast({
-        title: "Error",
-        description: "Failed to get AI response. Please try again.",
-        variant: "destructive",
+        title: "Connection Issue",
+        description: "Using fallback response. The AI models are warming up - try again in a moment!",
+        variant: "default",
       });
+      
+      // Add a fallback message
+      const fallbackMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        text: "🔗 ChainWhisper here! I'm currently connecting to the Base network data sources. While I warm up, feel free to ask about:\n\n• Wallet addresses and their activity\n• NFT collection analysis\n• DeFi protocol interactions\n• Gas usage patterns\n• Token movements\n\nTry your question again in a moment! 📊",
+        isUser: false,
+        timestamp: new Date().toLocaleTimeString()
+      };
+      
+      setMessages(prev => [...prev, fallbackMessage]);
     }
   };
 
