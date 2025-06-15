@@ -18,19 +18,21 @@ export const useAnthropic = () => {
       const userMessage = messages[messages.length - 1].content;
       const lowerMessage = userMessage.toLowerCase();
       
+      console.log('Processing message:', userMessage);
+      
       // Check if message contains a wallet address
       const walletAddressMatch = userMessage.match(/0x[a-fA-F0-9]{40}/);
       
       if (walletAddressMatch) {
         const address = walletAddressMatch[0];
         console.log('Wallet address detected:', address);
+        console.log('Starting wallet analysis...');
         
         try {
           const walletData = await analyzeWallet(address);
+          console.log('Wallet analysis completed:', walletData);
           
           if (walletData) {
-            console.log('Wallet analysis successful:', walletData);
-            
             const tokenList = walletData.tokenBalances.length > 0 
               ? walletData.tokenBalances.map(token => {
                   const balance = parseFloat(token.tokenBalance) / Math.pow(10, token.decimals || 18);
@@ -55,6 +57,7 @@ ${tokenList}
 
 Would you like me to analyze specific transactions, DeFi positions, or provide more detailed insights for this wallet?`;
           } else {
+            console.log('Wallet analysis returned null');
             return `❌ Unable to retrieve data for wallet ${address}. The wallet may be empty or there might be an API issue.`;
           }
         } catch (error) {
