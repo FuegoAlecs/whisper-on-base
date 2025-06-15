@@ -42,12 +42,29 @@ export const useAnthropic = () => {
             let adviceNote = "";
             const isEthZero = parseFloat(walletData.ethBalance) === 0;
             const isTxCountZero = walletData.transactionCount === 0;
-            // Check if a significant number of tokens are missing symbols.
-            // This is a heuristic: more than half, or if there's at least one token and it's missing.
-            const unknownTokenCount = walletData.tokenBalances.filter(t => t.symbol === '[Symbol Missing]').length;
+            const unknownTokenCount = walletData.tokenBalances.filter(t => t.symbol === '[Symbol Missing]').length; // Keep for hasMostlyUnknownTokens
             const hasMostlyUnknownTokens = walletData.tokenBalances.length > 0 &&
                                          (unknownTokenCount === walletData.tokenBalances.length || unknownTokenCount > walletData.tokenBalances.length / 2);
 
+            const unknownSymbolCountNonZeroBalance = walletData.tokenBalances.filter(
+              t => (t.symbol === '[Symbol Missing]' || t.name === '[Name Missing]') && parseFloat(t.tokenBalance) > 0
+            ).length;
+            const totalTokensWithBalance = walletData.tokenBalances.filter(t => parseFloat(t.tokenBalance) > 0).length;
+
+            let specificSymbolNote = "";
+            if (totalTokensWithBalance > 0 && unknownSymbolCountNonZeroBalance === totalTokensWithBalance) {
+              // All tokens with a balance are missing symbols/names
+              specificSymbolNote = `
+
+⚠️ **Token Info:** For some or all tokens listed, names and symbols couldn't be displayed. This might be due to the specifics of your Alchemy API key's service tier or because the metadata isn't available from Alchemy for these particular tokens on Base. The balances shown are from the API.`;
+            } else if (unknownSymbolCountNonZeroBalance > 0) {
+              // Some tokens with balance are missing symbols/names
+               specificSymbolNote = `
+
+⚠️ **Token Info:** For some tokens, names/symbols are missing. This could be due to your Alchemy API key's service tier or metadata availability from Alchemy.`;
+            }
+
+            // Existing sparseness check
             if (isEthZero && isTxCountZero && (walletData.tokenBalances.length === 0 || hasMostlyUnknownTokens)) {
               adviceNote = `
 
@@ -56,6 +73,15 @@ export const useAnthropic = () => {
         • If you've entered your own Alchemy API key, please ensure it's correctly configured for Base Mainnet and has the necessary permissions for fetching balances and transaction history.
         • There might be temporary network or API provider issues.
       Please double-check the wallet address and your API key settings.`;
+
+              // If sparse note is added, and there's also a specific symbol issue for the (few) tokens present.
+              if (specificSymbolNote !== "" && hasMostlyUnknownTokens) {
+                adviceNote += specificSymbolNote; // Append the symbol note to the general sparse note.
+              }
+
+            } else if (specificSymbolNote !== "") {
+              // Data is not generally sparse, but there's a symbol-specific issue.
+              adviceNote = specificSymbolNote;
             }
 
             return `🔍 **Wallet Analysis for ${address}**
