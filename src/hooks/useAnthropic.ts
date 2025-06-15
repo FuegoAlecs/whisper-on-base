@@ -1,3 +1,4 @@
+
 import { useState } from 'react';
 import { useAlchemy } from './useAlchemy';
 
@@ -22,14 +23,19 @@ export const useAnthropic = () => {
       
       if (walletAddressMatch) {
         const address = walletAddressMatch[0];
+        console.log('Wallet address detected:', address);
+        
         try {
           const walletData = await analyzeWallet(address);
           
           if (walletData) {
+            console.log('Wallet analysis successful:', walletData);
+            
             const tokenList = walletData.tokenBalances.length > 0 
-              ? walletData.tokenBalances.map(token => 
-                  `• ${token.symbol || 'Unknown'}: ${token.tokenBalance}`
-                ).join('\n')
+              ? walletData.tokenBalances.map(token => {
+                  const balance = parseFloat(token.tokenBalance) / Math.pow(10, token.decimals || 18);
+                  return `• ${token.symbol || 'Unknown'}: ${balance.toFixed(6)}`;
+                }).join('\n')
               : '• No significant token balances found';
 
             return `🔍 **Wallet Analysis for ${address}**
@@ -43,17 +49,23 @@ export const useAnthropic = () => {
 ${tokenList}
 
 🎯 **Insights:**
-• This wallet ${walletData.transactionCount > 100 ? 'appears to be actively used' : 'has moderate activity'}
-• ETH balance suggests ${parseFloat(walletData.ethBalance) > 0.1 ? 'active user' : 'minimal ETH holdings'}
-• ${walletData.tokenBalances.length > 0 ? 'Holds multiple tokens indicating DeFi participation' : 'Primarily holds ETH'}
+• This wallet ${walletData.transactionCount > 100 ? 'appears to be actively used' : walletData.transactionCount > 10 ? 'has moderate activity' : 'has minimal activity'}
+• ETH balance suggests ${parseFloat(walletData.ethBalance) > 0.1 ? 'active user with significant holdings' : parseFloat(walletData.ethBalance) > 0.01 ? 'moderate ETH holdings' : 'minimal ETH holdings'}
+• ${walletData.tokenBalances.length > 0 ? 'Holds multiple tokens indicating DeFi participation' : 'Primarily holds ETH with no significant token holdings'}
 
-Would you like me to analyze specific transactions, DeFi positions, or NFT holdings for this wallet?`;
+Would you like me to analyze specific transactions, DeFi positions, or provide more detailed insights for this wallet?`;
+          } else {
+            return `❌ Unable to retrieve data for wallet ${address}. The wallet may be empty or there might be an API issue.`;
           }
         } catch (error) {
-          return `❌ Unable to analyze wallet ${address}. This could be due to:
+          console.error('Wallet analysis error:', error);
+          return `❌ Error analyzing wallet ${address}: ${error instanceof Error ? error.message : 'Unknown error'}
+
+This could be due to:
 • Invalid address format
-• Network connectivity issues
+• Network connectivity issues  
 • API rate limits
+• Wallet not found on Base network
 
 Please verify the address and try again. I can help with other Base blockchain analysis in the meantime!`;
         }

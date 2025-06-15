@@ -40,6 +40,9 @@ export const useAlchemy = () => {
         ? `https://base-sepolia.g.alchemy.com/v2/${apiKey}`
         : `https://base-mainnet.g.alchemy.com/v2/${apiKey}`;
 
+      console.log('Analyzing wallet:', address);
+      console.log('Using API endpoint:', baseUrl);
+
       // Get ETH balance
       const ethBalanceResponse = await fetch(baseUrl, {
         method: 'POST',
@@ -53,6 +56,12 @@ export const useAlchemy = () => {
       });
 
       const ethData = await ethBalanceResponse.json();
+      console.log('ETH balance response:', ethData);
+      
+      if (ethData.error) {
+        throw new Error(`Alchemy API error: ${ethData.error.message}`);
+      }
+
       const ethBalance = parseInt(ethData.result, 16) / Math.pow(10, 18);
 
       // Get token balances
@@ -68,6 +77,7 @@ export const useAlchemy = () => {
       });
 
       const tokenData = await tokenResponse.json();
+      console.log('Token balance response:', tokenData);
 
       // Get transaction count
       const txCountResponse = await fetch(baseUrl, {
@@ -82,14 +92,47 @@ export const useAlchemy = () => {
       });
 
       const txData = await txCountResponse.json();
+      console.log('Transaction count response:', txData);
 
-      return {
+      // Check if address is a contract
+      const codeResponse = await fetch(baseUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jsonrpc: '2.0',
+          id: 4,
+          method: 'eth_getCode',
+          params: [address, 'latest']
+        })
+      });
+
+      const codeData = await codeResponse.json();
+      const isContract = codeData.result && codeData.result !== '0x';
+
+      // Process token balances
+      let processedTokenBalances: TokenBalance[] = [];
+      if (tokenData.result && tokenData.result.tokenBalances) {
+        processedTokenBalances = tokenData.result.tokenBalances
+          .filter((token: any) => token.tokenBalance && token.tokenBalance !== '0x0')
+          .map((token: any) => ({
+            contractAddress: token.contractAddress,
+            tokenBalance: parseInt(token.tokenBalance, 16).toString(),
+            name: token.name || 'Unknown Token',
+            symbol: token.symbol || 'UNKNOWN',
+            decimals: token.decimals || 18
+          }));
+      }
+
+      const result = {
         address,
         ethBalance: ethBalance.toString(),
-        tokenBalances: tokenData.result?.tokenBalances || [],
+        tokenBalances: processedTokenBalances,
         transactionCount: parseInt(txData.result, 16),
-        isContract: false // Would need additional call to determine this
+        isContract
       };
+
+      console.log('Final wallet analysis result:', result);
+      return result;
 
     } catch (error) {
       console.error('Alchemy API error:', error);
