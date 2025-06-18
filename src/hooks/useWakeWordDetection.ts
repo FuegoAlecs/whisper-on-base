@@ -7,7 +7,7 @@ const PICOVOICE_ACCESS_KEY = 'cZDyFlz2yFDXbMoIHh3fsbCc1Kz/9l3z/FAGE66aL4pIw6NWbF
 const CUSTOM_WAKE_WORD_FILE_PATH = 'picovoice_models/Hey-Chain-Whisper_en_wasm_v3_0_0.ppn'; // User to confirm actual .ppn filename
 const PORCUPINE_MODEL_FILE_PATH = 'picovoice_models/porcupine_params.pv';
 
-const WAKE_WORD_LABEL = 'Hey Chain Whisper'; // Label for your custom wake word
+const WAKE_WORD_LABEL = 'Hey-Chain-Whisper'; // Label for your custom wake word
 
 interface WakeWordDetectionHook {
   isLoaded: boolean;
