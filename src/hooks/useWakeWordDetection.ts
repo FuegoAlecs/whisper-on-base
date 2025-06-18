@@ -4,7 +4,7 @@ import { usePorcupine } from '@picovoice/porcupine-react';
 const PICOVOICE_ACCESS_KEY = 'HTKSr5YAOspvXSR/Ag5GjK7L1Kn+q/lIfjuQrvOsBmz+SEaBE3chFw==';
 
 // IMPORTANT: User needs to confirm these paths and filenames
-const CUSTOM_WAKE_WORD_FILE_PATH = '/picovoice_models/Hey-Chain-Whisper_en_wasm_v3_0_0.ppn';
+const CUSTOM_WAKE_WORD_FILE_PATH = '/picovoice_models/Hi-Chain_en_wasm_v3_0_0.ppn';
 const PORCUPINE_MODEL_FILE_PATH = '/picovoice_models/porcupine_params.pv';
 
 const WAKE_WORD_LABEL = 'HeyChainWhisper'; // Label for your custom wake word
