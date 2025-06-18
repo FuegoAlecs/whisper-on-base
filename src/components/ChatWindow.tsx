@@ -2,11 +2,13 @@
 import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Send, Sparkles } from "lucide-react";
+import { Send, Sparkles, Mic, MicOff } from "lucide-react";
 import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
+import { useWebSpeech } from '@/hooks/useWebSpeech';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
 // No CHAT_HISTORY_KEY here anymore
 
@@ -43,6 +45,58 @@ const ChatWindow = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
+
+  const {
+    isListening,
+    startListening,
+    stopListening,
+    speak,
+    isSTTSupported,
+    isTTSSupported,
+  } = useWebSpeech({
+    onSTTResult: (finalTranscript) => {
+      setInputValue(finalTranscript);
+    },
+    onSTTError: (error: any) => {
+      console.error('STT Error:', error);
+      const errorMessage = error?.message || (typeof error === 'string' ? error : 'An unknown error occurred. Common issues include microphone permission denial.');
+      toast({
+        title: "Speech Recognition Error",
+        description: `Could not start microphone: ${errorMessage}. Please ensure microphone access is allowed in your browser settings.`,
+        variant: "destructive",
+      });
+    },
+    onTTSError: (error: any) => {
+      console.error('TTS Error:', error);
+      const errorMessage = error?.message || (typeof error === 'string' ? error : 'An unknown error occurred.');
+      toast({
+        title: "Speech Synthesis Error",
+        description: `Could not play audio: ${errorMessage}.`,
+        variant: "destructive",
+      });
+    }
+  });
+
+  useEffect(() => {
+    if (!isSTTSupported && !localStorage.getItem('sttUnsupportedToastShown')) {
+      toast({
+        title: "Speech Recognition Not Supported",
+        description: "Your browser does not support the Web Speech API for speech-to-text.",
+        variant: "default",
+        duration: 5000,
+      });
+      localStorage.setItem('sttUnsupportedToastShown', 'true');
+    }
+    if (!isTTSSupported && !localStorage.getItem('ttsUnsupportedToastShown')) {
+      toast({
+        title: "Text-to-Speech Not Supported",
+        description: "Your browser does not support the Web Speech API for text-to-speech.",
+        variant: "default",
+        duration: 5000,
+      });
+      localStorage.setItem('ttsUnsupportedToastShown', 'true');
+    }
+  }, [isSTTSupported, isTTSSupported, toast]);
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -108,6 +162,10 @@ const ChatWindow = ({
         isUser: false,
         timestamp: new Date().toLocaleTimeString()
       };
+
+      if (isTTSSupported) {
+        speak(aiMessage.text);
+      }
       
       // Update messages state with AI response and then trigger save
       setMessages(prevMessages => {
@@ -176,6 +234,9 @@ const ChatWindow = ({
             message={message.text}
             isUser={message.isUser}
             timestamp={message.timestamp}
+            // Pass down TTS capabilities for AI messages
+            onSpeak={!message.isUser && isTTSSupported ? speak : undefined}
+            isTTSSupported={!message.isUser ? isTTSSupported : undefined}
           />
         ))}
         
@@ -184,7 +245,8 @@ const ChatWindow = ({
       </div>
 
       <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-2 sm:p-4 lg:p-6">
-        <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto">
+        <TooltipProvider>
+        <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto items-center">
           <div className="flex-1 relative">
             <Input
               value={inputValue}
@@ -195,15 +257,33 @@ const ChatWindow = ({
               disabled={isLoading}
             />
           </div>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button
+                onClick={isListening ? stopListening : startListening}
+                disabled={!isSTTSupported || isLoading}
+                variant="outline"
+                size="icon"
+                className="p-2 sm:p-3 lg:p-4 rounded-lg border-gray-700 hover:bg-gray-800 data-[state=open]:bg-gray-800"
+              >
+                {isListening ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
+                <span className="sr-only">{isListening ? "Stop listening" : "Start listening"}</span>
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{!isSTTSupported ? "Speech input not supported" : (isListening ? "Stop voice input" : "Use microphone")}</p>
+            </TooltipContent>
+          </Tooltip>
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading}
+            disabled={!inputValue.trim() || isLoading || isListening}
             className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 rounded-lg transition-all duration-200 flex-shrink-0"
           >
             <Send className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />
             <span className="hidden sm:inline ml-2">Whisper</span>
           </Button>
         </div>
+        </TooltipProvider>
       </div>
     </div>
   );

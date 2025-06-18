@@ -1,13 +1,15 @@
 
-import { Bot, User } from "lucide-react";
+import { Bot, User, Volume2 } from "lucide-react";
 
 interface ChatMessageProps {
   message: string;
   isUser: boolean;
   timestamp?: string;
+  onSpeak?: (text: string) => void;
+  isTTSSupported?: boolean;
 }
 
-const ChatMessage = ({ message, isUser, timestamp }: ChatMessageProps) => {
+const ChatMessage = ({ message, isUser, timestamp, onSpeak, isTTSSupported }: ChatMessageProps) => {
   return (
     <div className={`flex gap-2 sm:gap-3 mb-3 sm:mb-4 lg:mb-6 ${isUser ? 'justify-end' : 'justify-start'} px-1 sm:px-2 lg:px-0`}>
       {!isUser && (
@@ -27,11 +29,22 @@ const ChatMessage = ({ message, isUser, timestamp }: ChatMessageProps) => {
         `}>
           <p className="text-gray-100 leading-relaxed whitespace-pre-wrap break-words">{message}</p>
         </div>
-        {timestamp && (
-          <p className="text-xs text-gray-500 mt-1 px-2">
-            {timestamp}
-          </p>
-        )}
+        <div className="flex items-center justify-between mt-1 px-2">
+          {timestamp && (
+            <p className="text-xs text-gray-500">
+              {timestamp}
+            </p>
+          )}
+          {!isUser && isTTSSupported && onSpeak && (
+            <button
+              onClick={() => onSpeak(message)}
+              className="text-gray-400 hover:text-orange-500 transition-colors duration-150 p-1 -mr-1 ml-auto"
+              aria-label="Play message audio"
+            >
+              <Volume2 className="w-3 h-3 sm:w-4 sm:h-4" />
+            </button>
+          )}
+        </div>
       </div>
 
       {isUser && (
