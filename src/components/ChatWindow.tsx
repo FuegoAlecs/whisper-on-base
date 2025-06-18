@@ -7,7 +7,8 @@ import ChatMessage from "./ChatMessage";
 import LoadingMessage from "./LoadingMessage";
 import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
-import { useWebSpeech } from '@/hooks/useWebSpeech';
+import { useWebSpeech } from '@/hooks/useWebSpeech'; // Will be primarily for TTS
+import { usePicovoiceSTT } from '@/hooks/usePicovoiceSTT'; // New STT hook
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
 import { Switch } from "@/components/ui/switch";
@@ -50,27 +51,14 @@ const ChatWindow = ({
   const { toast } = useToast();
   const [isAwaitingUserResponse, setIsAwaitingUserResponse] = useState<boolean>(false);
 
-  // Web Speech API (STT/TTS)
+  // Web Speech API (now primarily for TTS)
   const {
-    isListening, // This is for main STT
-    startListening,
-    stopListening,
     speak,
-    isSTTSupported,
+    isSpeaking, // Retain for TTS status if needed elsewhere, though not directly used in this refactor's example
     isTTSSupported,
+    cancelSpeaking // Retain if manual TTS cancellation is desired
   } = useWebSpeech({
-    onSTTResult: (finalTranscript) => {
-      setInputValue(finalTranscript);
-    },
-    onSTTError: (error: any) => {
-      console.error('STT Error:', error);
-      const errorMessage = error?.message || (typeof error === 'string' ? error : 'An unknown error occurred. Common issues include microphone permission denial.');
-      toast({
-        title: "Speech Recognition Error",
-        description: `Could not start microphone: ${errorMessage}. Please ensure microphone access is allowed in your browser settings.`,
-        variant: "destructive",
-      });
-    },
+    // STT-related callbacks (onSTTResult, onSTTError) are removed
     onTTSError: (error: any) => {
       console.error('TTS Error:', error);
       const errorMessage = error?.message || (typeof error === 'string' ? error : 'An unknown error occurred.');
@@ -81,28 +69,51 @@ const ChatWindow = ({
       });
     },
     onTTSFinisH: () => {
-      console.log('[ChatWindow] TTS has finished speaking.');
+      console.log('[ChatWindow] TTS has finished speaking (for auto-re-listen).');
       setIsAwaitingUserResponse(true);
     },
   });
+
+  // Picovoice Cheetah STT
+  const {
+    transcript: picovoiceTranscript,
+    isLoaded: isPicovoiceSTTLoaded,
+    isListening: isPicovoiceSTTListening,
+    error: picovoiceSTTError,
+    startSTT: startPicovoiceSTT,
+    stopSTT: stopPicovoiceSTT,
+  } = usePicovoiceSTT();
+
+  // Update inputValue from Picovoice transcript
+  useEffect(() => {
+    if (isPicovoiceSTTListening) {
+        setInputValue(picovoiceTranscript);
+    } else {
+        // When not listening, set the final transcript if it's different
+        // This helps capture the full sentence after STT stops.
+        if (inputValue !== picovoiceTranscript && picovoiceTranscript !== "") {
+            setInputValue(picovoiceTranscript);
+        }
+        // If STT stops and transcript is empty, inputValue is not cleared automatically here,
+        // allowing user text to persist if STT failed or returned empty.
+    }
+  }, [picovoiceTranscript, isPicovoiceSTTListening]); // Removed inputValue from deps to avoid potential loops
 
   // Wake Word Detection
   const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
 
   const handleWakeWordDetected = useCallback(() => {
     console.log('[ChatWindow] Wake word detected!');
-    if (!isSTTSupported) {
-      toast({ title: "Voice Input Not Supported", description: "Cannot start voice input after wake word." });
+    if (!isPicovoiceSTTLoaded) {
+      toast({ title: "Voice Input Not Ready", description: "Picovoice STT engine not loaded yet." });
       return;
     }
-    if (isListening) { // from useWebSpeech - already listening for main STT
-      console.log('[ChatWindow] Already listening for STT, no action on wake word.');
+    if (isPicovoiceSTTListening) {
+      console.log('[ChatWindow] Picovoice STT already listening, no action on wake word.');
       return;
     }
-    startListening(); // from useWebSpeech
-    // Optionally, disable wake word listening temporarily or provide other feedback
-    // setWakeWordEnabled(false); // Example: turn off wake word after detection
-  }, [isListening, startListening, isSTTSupported, toast]);
+    startPicovoiceSTT();
+  }, [isPicovoiceSTTLoaded, isPicovoiceSTTListening, startPicovoiceSTT, toast]);
 
   const {
     isLoaded: isWakeWordLoaded,
@@ -112,19 +123,19 @@ const ChatWindow = ({
     stopWakeWordDetection,
   } = useWakeWordDetection(handleWakeWordDetected);
 
-  // Effect to start/stop wake word detection based on the toggle and main STT state
+  // Effect to start/stop wake word detection based on the toggle and Picovoice STT state
   useEffect(() => {
     if (wakeWordEnabled && isWakeWordLoaded) {
-      if (!isListeningForWakeWord && !isListening) { // isListening is from useWebSpeech (main STT)
-        console.log('[ChatWindow] Conditions met: Starting wake word detection.');
+      if (!isListeningForWakeWord && !isPicovoiceSTTListening) { // Check Picovoice STT listening state
+        console.log('[ChatWindow] Conditions met (Picovoice): Starting wake word detection.');
         startWakeWordDetection();
-      } else if (isListeningForWakeWord && isListening) { // Main STT is active
-        console.log('[ChatWindow] Main STT active, stopping wake word detection temporarily.');
+      } else if (isListeningForWakeWord && isPicovoiceSTTListening) { // Check Picovoice STT listening state
+        console.log('[ChatWindow] Picovoice STT active, stopping wake word detection temporarily.');
         stopWakeWordDetection();
       }
     } else { // wakeWordEnabled is false OR not loaded
       if (isListeningForWakeWord) {
-        console.log('[ChatWindow] Conditions met: Stopping wake word detection (disabled or not loaded).');
+        console.log('[ChatWindow] Conditions met (Picovoice): Stopping wake word detection (disabled or not loaded).');
         stopWakeWordDetection();
       }
     }
@@ -132,12 +143,12 @@ const ChatWindow = ({
     wakeWordEnabled,
     isWakeWordLoaded,
     isListeningForWakeWord,
-    isListening, // from useWebSpeech
+    isPicovoiceSTTListening, // Use Picovoice STT listening state
     startWakeWordDetection,
     stopWakeWordDetection
   ]);
 
-  // Effect to handle wake word errors
+  // Effect to handle wake word errors (remains the same)
   useEffect(() => {
     if (wakeWordError) {
       toast({
@@ -150,14 +161,14 @@ const ChatWindow = ({
     }
   }, [wakeWordError, toast]);
 
-  // Effect for Auto-Starting STT after TTS finishes
+  // Effect for Auto-Starting Picovoice STT after TTS finishes
   useEffect(() => {
     let timerId: NodeJS.Timeout | null = null;
-    if (isAwaitingUserResponse && !isListening && !isListeningForWakeWord) {
-      console.log('[ChatWindow] Awaiting user response, will start STT listening shortly...');
+    if (isAwaitingUserResponse && !isPicovoiceSTTListening && !isListeningForWakeWord && isPicovoiceSTTLoaded) {
+      console.log('[ChatWindow] Awaiting user response, will start Picovoice STT listening shortly...');
       timerId = setTimeout(() => {
-        console.log('[ChatWindow] Auto-starting STT listening now.');
-        startListening();
+        console.log('[ChatWindow] Auto-starting Picovoice STT listening now.');
+        startPicovoiceSTT();
       }, 700);
     }
 
@@ -166,28 +177,31 @@ const ChatWindow = ({
         clearTimeout(timerId);
       }
     };
-  }, [isAwaitingUserResponse, isListening, isListeningForWakeWord, startListening]);
+  }, [isAwaitingUserResponse, isPicovoiceSTTListening, isListeningForWakeWord, startPicovoiceSTT, isPicovoiceSTTLoaded]);
 
-  // Effect to Reset isAwaitingUserResponse when STT Starts
+  // Effect to Reset isAwaitingUserResponse when Picovoice STT Starts
   useEffect(() => {
-    if (isListening && isAwaitingUserResponse) {
-      console.log('[ChatWindow] STT is now active, resetting isAwaitingUserResponse.');
+    if (isPicovoiceSTTListening && isAwaitingUserResponse) {
+      console.log('[ChatWindow] Picovoice STT is now active, resetting isAwaitingUserResponse.');
       setIsAwaitingUserResponse(false);
     }
-  }, [isListening, isAwaitingUserResponse]);
+  }, [isPicovoiceSTTListening, isAwaitingUserResponse]);
 
-
-  // STT/TTS Support Toasts (run once)
+  // Picovoice STT Error Toast
   useEffect(() => {
-    if (!isSTTSupported && !localStorage.getItem('sttUnsupportedToastShown')) {
+    if (picovoiceSTTError) {
+      console.error('[ChatWindow] Picovoice STT Error:', picovoiceSTTError);
       toast({
-        title: "Speech Recognition Not Supported",
-        description: "Your browser does not support the Web Speech API for speech-to-text.",
-        variant: "default",
-        duration: 5000,
+        title: "Voice Input Error (Picovoice)",
+        description: picovoiceSTTError.message || "An error occurred with Picovoice STT.",
+        variant: "destructive",
       });
-      localStorage.setItem('sttUnsupportedToastShown', 'true');
     }
+  }, [picovoiceSTTError, toast]);
+
+  // TTS Support Toast (run once) - STT support toast removed
+  useEffect(() => {
+    // Removed isSTTSupported check and corresponding toast
     if (!isTTSSupported && !localStorage.getItem('ttsUnsupportedToastShown')) {
       toast({
         title: "Text-to-Speech Not Supported",
@@ -219,7 +233,13 @@ const ChatWindow = ({
 
 
   const handleSend = async () => {
-    if (!inputValue.trim() || isLoading) return;
+    if (!inputValue.trim() || isLoading || isPicovoiceSTTListening) return; // Also disable send if Picovoice STT is listening
+
+    // If Picovoice STT is active, stop it before sending.
+    // This ensures the final transcript is processed by the hook.
+    if (isPicovoiceSTTListening) {
+        await stopPicovoiceSTT();
+    }
 
     let tempNewChatId: string | null = null;
     if (messages.length === 0 && !currentConversationId) {
@@ -378,14 +398,14 @@ const ChatWindow = ({
           </Tooltip>
           {/* Status indicators container */}
           <div className="w-40 text-right h-4"> {/* Fixed width & height container for status text to prevent layout shifts, adjust w- as needed */}
-            {isAwaitingUserResponse && !isListening && !isLoading && (
+            {isAwaitingUserResponse && !isPicovoiceSTTListening && !isLoading && (
               <span className="text-xs text-sky-400 italic animate-pulse">Listening for reply...</span>
             )}
             {/* Show wake word status only if not awaiting user response for main STT */}
-            {!(isAwaitingUserResponse && !isListening && !isLoading) && isListeningForWakeWord && (
+            {!(isAwaitingUserResponse && !isPicovoiceSTTListening && !isLoading) && isListeningForWakeWord && (
               <span className="text-xs text-orange-500">(Listening for wake word...)</span>
             )}
-            {!(isAwaitingUserResponse && !isListening && !isLoading) && !isWakeWordLoaded && !wakeWordError && wakeWordEnabled && (
+            {!(isAwaitingUserResponse && !isPicovoiceSTTListening && !isLoading) && !isWakeWordLoaded && !wakeWordError && wakeWordEnabled && (
               <span className="text-xs text-yellow-500">(Wake word engine loading...)</span>
             )}
             {/* Wake word error can still be shown if relevant, or you might hide it too if isAwaitingUserResponse is true */}
@@ -407,23 +427,23 @@ const ChatWindow = ({
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
-                onClick={isListening ? stopListening : startListening}
-                disabled={!isSTTSupported || isLoading}
+                onClick={isPicovoiceSTTListening ? stopPicovoiceSTT : startPicovoiceSTT}
+                disabled={!isPicovoiceSTTLoaded || isLoading} //isLoading from AI
                 variant="outline"
                 size="icon"
                 className="p-2 sm:p-3 lg:p-4 rounded-lg border-gray-700 hover:bg-gray-800 data-[state=open]:bg-gray-800"
               >
-                {isListening ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
-                <span className="sr-only">{isListening ? "Stop listening" : "Start listening"}</span>
+                {isPicovoiceSTTListening ? <MicOff className="h-4 w-4 sm:h-5 sm:w-5 text-red-500 animate-pulse" /> : <Mic className="h-4 w-4 sm:h-5 sm:w-5" />}
+                <span className="sr-only">{isPicovoiceSTTListening ? "Stop voice input" : "Start voice input (Picovoice)"}</span>
               </Button>
             </TooltipTrigger>
             <TooltipContent>
-              <p>{!isSTTSupported ? "Speech input not supported" : (isListening ? "Stop voice input" : "Use microphone")}</p>
+              <p>{!isPicovoiceSTTLoaded ? "Voice input engine loading..." : (isPicovoiceSTTListening ? "Stop voice input" : "Start voice input")}</p>
             </TooltipContent>
           </Tooltip>
           <Button
             onClick={handleSend}
-            disabled={!inputValue.trim() || isLoading || isListening}
+            disabled={!inputValue.trim() || isLoading || isPicovoiceSTTListening}
             className="bg-orange-600 hover:bg-orange-700 text-white px-2 sm:px-4 lg:px-6 py-1.5 sm:py-3 lg:py-4 rounded-lg transition-all duration-200 flex-shrink-0"
           >
             <Send className="h-3 w-3 sm:h-4 sm:w-4 lg:h-5 lg:w-5" />

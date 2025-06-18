@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@hookform/resolvers": "^3.9.0",
+    "@picovoice/cheetah-react": "^2.1.1",
     "@picovoice/porcupine-react": "^3.0.2",
     "@picovoice/web-voice-processor": "^4.0.8",
     "@radix-ui/react-accordion": "^1.2.0",
