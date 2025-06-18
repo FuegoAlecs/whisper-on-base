@@ -211,7 +211,7 @@ const ChatWindow = ({
       });
       localStorage.setItem('ttsUnsupportedToastShown', 'true');
     }
-  }, [isSTTSupported, isTTSSupported, toast]);
+  }, [isTTSSupported, toast]); // Removed isSTTSupported from dependency array
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
