@@ -2,7 +2,7 @@ import { useEffect, useState, useCallback } from 'react';
 import { useCheetah } from '@picovoice/cheetah-react';
 
 // Use the same AccessKey as for Porcupine
-const PICOVOICE_ACCESS_KEY = 'cZDyFlz2yFDXbMoIHh3fsbCc1Kz/9l3z/FAGE66aL4pIw6NWbFjsqA==';
+const PICOVOICE_ACCESS_KEY = 'HTKSr5YAOspvXSR/Ag5GjK7L1Kn+q/lIfjuQrvOsBmz+SEaBE3chFw==';
 
 // Path to the Cheetah model file (user needs to download this)
 const CHEETAH_MODEL_FILE_PATH = '/picovoice_models/cheetah_params.pv';

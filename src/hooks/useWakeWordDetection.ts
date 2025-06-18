@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback } from 'react';
 import { usePorcupine } from '@picovoice/porcupine-react';
 
-const PICOVOICE_ACCESS_KEY = 'cZDyFlz2yFDXbMoIHh3fsbCc1Kz/9l3z/FAGE66aL4pIw6NWbFjsqA==';
+const PICOVOICE_ACCESS_KEY = 'HTKSr5YAOspvXSR/Ag5GjK7L1Kn+q/lIfjuQrvOsBmz+SEaBE3chFw==';
 
 // IMPORTANT: User needs to confirm these paths and filenames
 const CUSTOM_WAKE_WORD_FILE_PATH = '/picovoice_models/Hey-Chain-Whisper_en_wasm_v3_0_0.ppn';
