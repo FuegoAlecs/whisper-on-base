@@ -78,16 +78,11 @@ After recent changes to improve TTS reliability, please pay close attention to t
 4.  **Error Handling (TTS):**
     - [ ] **TTS Engine Error (Simulate if possible, or observe):** If the TTS engine encounters an issue, verify an error toast "Speech Synthesis Error" appears. (This is hard to reliably reproduce).
 
-**III. General UI/UX:**  *(This section was previously III, it will now be IV)*
-- [ ] **Button States:** Verify microphone and send buttons are appropriately enabled/disabled during STT listening, AI response loading, etc.
-- [ ] **Tooltips:** Verify all relevant tooltips on buttons provide clear information.
-- [ ] **Responsiveness:** Check the layout of the microphone button and input field on different screen sizes (if applicable to the changes made).
-- [ ] **No Console Errors:** Open the browser's developer console and monitor for any uncaught errors during STT/TTS operations.
-
-This checklist will help ensure the quality and correctness of the voice integration.
 ---
+*(The "---" separator was here, I'm removing it as General UI/UX will be moved to the end)*
 
-**IV. Wake Word Functionality ("Hey, ChainWhisper")** *(Adjusted numbering from III to IV)*
+**III. Wake Word Functionality ("Hey, ChainWhisper")**
+*(This was IV, and the new section V will follow this)*
 
 This section covers testing for the "Hey, ChainWhisper" wake word detection feature powered by Picovoice Porcupine.
 
@@ -146,3 +141,63 @@ This section covers testing for the "Hey, ChainWhisper" wake word detection feat
 - [ ] While testing all the above scenarios, keep the browser's developer console open.
 - [ ] Monitor for log messages prefixed with `[useWakeWordDetection]` (from the hook) and relevant messages from `[ChatWindow]` regarding state changes or actions.
 - [ ] Note any errors or unexpected log outputs. This is particularly important for debugging initialization issues or unexpected detection failures.
+
+---
+*(New section V starts here)*
+
+**IV. Continuous Conversation (Auto-Re-listen)**
+
+This section tests the application's ability to automatically listen for the user's next input after the AI has finished speaking, creating a more fluid conversational flow.
+
+**A. Successful Auto-Re-listen Cycle:**
+
+- [ ] **Initiate Conversation:** Start a conversation either by using the "Hey, ChainWhisper" wake word (if enabled) or by manually clicking the microphone button.
+- [ ] **AI Responds:** Let the AI process your query and respond with Text-to-Speech (TTS).
+- [ ] **TTS Finishes:** Verify that the AI's TTS completes fully.
+- [ ] **"Listening for reply..." Indicator:**
+    - [ ] Observe that the "Listening for reply..." (or similar) UI indicator appears, possibly with a pulsing animation.
+- [ ] **Automatic STT Activation:**
+    - [ ] Verify that after a short pause (approx. 0.7 seconds), the main Speech-to-Text (STT) service activates automatically (e.g., the microphone icon in the input bar changes, indicating the app is listening for your command).
+- [ ] **Speak Next Turn:** Provide your next voice input.
+- [ ] **Cycle Repeats:** Verify the AI processes this new input, responds with TTS, and the system again attempts to auto-re-listen for your next turn.
+
+**B. No User Input During Auto-Re-listen:**
+
+- [ ] **Trigger Auto-Re-listen:** Follow steps in V.A until the main STT activates automatically.
+- [ ] **Remain Silent:** Do not provide any voice input.
+- [ ] **STT Timeout:** Verify that the STT session times out gracefully (browser-dependent, but typically after a few seconds of silence). The microphone icon should revert to its non-listening state.
+- [ ] **No Stuck Loop:** Confirm the system does not immediately try to auto-re-listen again in a rapid loop. It should be idle or revert to wake word listening if enabled.
+- [ ] **Wake Word Resumes (if enabled):** If the "Hey, ChainWhisper" toggle is active, verify that after the STT timeout, the "(Listening for wake word...)" status indicator eventually reappears.
+
+**C. Manual STT Activation During Auto-Re-listen Transition:**
+
+- [ ] **Trigger Auto-Re-listen Cue:** Let the AI respond, and wait for the "Listening for reply..." indicator to appear.
+- [ ] **Immediate Manual STT:**
+    - [ ] During the short delay *before* the main STT auto-activates, OR
+    - [ ] Just as the main STT *has* auto-activated,
+    - Click the main microphone button in the input bar.
+- [ ] **Manual Precedence:** Verify that this manual STT activation takes precedence, works as expected, and captures your speech.
+- [ ] **No Interference:** Confirm that the auto-re-listen mechanism doesn't cause duplicate STT sessions or other issues.
+
+**D. Wake Word Interaction During Auto-Re-listen STT:**
+
+- [ ] **Enable Wake Word:** Ensure "Hey, ChainWhisper" toggle is active.
+- [ ] **Trigger Auto-Re-listen STT:** Let the AI respond, and allow the system to auto-activate the main STT (mic icon shows it's listening for your command).
+- [ ] **Speak Wake Word:** While this auto-activated STT is active, say "Hey, ChainWhisper".
+- [ ] **No Interference:** Verify that the system does not treat "Hey, ChainWhisper" as a *new* wake word trigger during this phase. The ongoing STT session should capture "Hey, ChainWhisper" as part of the user's command/query if spoken then. (The wake word engine should be paused when main STT is active).
+
+**E. UI Indicator States:**
+
+- [ ] **Indicator Timing:** Carefully observe the "Listening for reply..." indicator. Confirm it appears only after AI TTS finishes and before/during the very start of the automatic STT.
+- [ ] **No Clashing Indicators:** Ensure the "Listening for reply...", "(Listening for wake word...)", and "(Wake word engine loading...)" indicators are displayed appropriately and do not confusingly overlap. The "Listening for reply..." should take precedence during its active phase.
+
+---
+*(Original Section III, now renumbered to VI and moved to the end)*
+
+**V. General UI/UX:**
+- [ ] **Button States:** Verify microphone and send buttons are appropriately enabled/disabled during STT listening, AI response loading, etc.
+- [ ] **Tooltips:** Verify all relevant tooltips on buttons provide clear information.
+- [ ] **Responsiveness:** Check the layout of the microphone button and input field on different screen sizes (if applicable to the changes made).
+- [ ] **No Console Errors:** Open the browser's developer console and monitor for any uncaught errors during STT/TTS operations.
+
+This checklist will help ensure the quality and correctness of the voice integration.

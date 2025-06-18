@@ -48,6 +48,7 @@ const ChatWindow = ({
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
+  const [isAwaitingUserResponse, setIsAwaitingUserResponse] = useState<boolean>(false);
 
   // Web Speech API (STT/TTS)
   const {
@@ -78,7 +79,11 @@ const ChatWindow = ({
         description: `Could not play audio: ${errorMessage}.`,
         variant: "destructive",
       });
-    }
+    },
+    onTTSFinisH: () => {
+      console.log('[ChatWindow] TTS has finished speaking.');
+      setIsAwaitingUserResponse(true);
+    },
   });
 
   // Wake Word Detection
@@ -144,6 +149,32 @@ const ChatWindow = ({
       setWakeWordEnabled(false); // Disable toggle on error
     }
   }, [wakeWordError, toast]);
+
+  // Effect for Auto-Starting STT after TTS finishes
+  useEffect(() => {
+    let timerId: NodeJS.Timeout | null = null;
+    if (isAwaitingUserResponse && !isListening && !isListeningForWakeWord) {
+      console.log('[ChatWindow] Awaiting user response, will start STT listening shortly...');
+      timerId = setTimeout(() => {
+        console.log('[ChatWindow] Auto-starting STT listening now.');
+        startListening();
+      }, 700);
+    }
+
+    return () => {
+      if (timerId) {
+        clearTimeout(timerId);
+      }
+    };
+  }, [isAwaitingUserResponse, isListening, isListeningForWakeWord, startListening]);
+
+  // Effect to Reset isAwaitingUserResponse when STT Starts
+  useEffect(() => {
+    if (isListening && isAwaitingUserResponse) {
+      console.log('[ChatWindow] STT is now active, resetting isAwaitingUserResponse.');
+      setIsAwaitingUserResponse(false);
+    }
+  }, [isListening, isAwaitingUserResponse]);
 
 
   // STT/TTS Support Toasts (run once)
@@ -345,11 +376,20 @@ const ChatWindow = ({
               <p className="text-xs max-w-xs">When enabled, the app will listen for the phrase<br />"Hey, ChainWhisper" to activate voice input.<br />Your microphone will be active.</p>
             </TooltipContent>
           </Tooltip>
-          {/* Status indicators can be part of the flex container or positioned nearby */}
-          <div className="w-28 text-right"> {/* Fixed width container for status text to prevent layout shifts */}
-            {isListeningForWakeWord && <span className="text-xs text-orange-500">(Listening...)</span>}
-            {!isWakeWordLoaded && !wakeWordError && wakeWordEnabled && <span className="text-xs text-yellow-500">(Engine loading...)</span>}
-            {wakeWordError && <span className="text-xs text-red-500">(Error)</span>}
+          {/* Status indicators container */}
+          <div className="w-40 text-right h-4"> {/* Fixed width & height container for status text to prevent layout shifts, adjust w- as needed */}
+            {isAwaitingUserResponse && !isListening && !isLoading && (
+              <span className="text-xs text-sky-400 italic animate-pulse">Listening for reply...</span>
+            )}
+            {/* Show wake word status only if not awaiting user response for main STT */}
+            {!(isAwaitingUserResponse && !isListening && !isLoading) && isListeningForWakeWord && (
+              <span className="text-xs text-orange-500">(Listening for wake word...)</span>
+            )}
+            {!(isAwaitingUserResponse && !isListening && !isLoading) && !isWakeWordLoaded && !wakeWordError && wakeWordEnabled && (
+              <span className="text-xs text-yellow-500">(Wake word engine loading...)</span>
+            )}
+            {/* Wake word error can still be shown if relevant, or you might hide it too if isAwaitingUserResponse is true */}
+            {wakeWordError && <span className="text-xs text-red-500">(Wake word error)</span>}
           </div>
         </div>
 
