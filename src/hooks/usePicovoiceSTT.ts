@@ -5,7 +5,7 @@ import { useCheetah } from '@picovoice/cheetah-react';
 const PICOVOICE_ACCESS_KEY = 'cZDyFlz2yFDXbMoIHh3fsbCc1Kz/9l3z/FAGE66aL4pIw6NWbFjsqA==';
 
 // Path to the Cheetah model file (user needs to download this)
-const CHEETAH_MODEL_FILE_PATH = 'picovoice_models/cheetah_params.pv';
+const CHEETAH_MODEL_FILE_PATH = '/picovoice_models/cheetah_params.pv';
 
 interface PicovoiceSTTHook {
   transcript: string;
