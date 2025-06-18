@@ -1,0 +1,116 @@
+import { useEffect, useState, useCallback } from 'react';
+import { usePorcupine } from '@picovoice/porcupine-react';
+
+const PICOVOICE_ACCESS_KEY = 'cZDyFlz2yFDXbMoIHh3fsbCc1Kz/9l3z/FAGE66aL4pIw6NWbFjsqA==';
+
+// IMPORTANT: User needs to confirm these paths and filenames
+const CUSTOM_WAKE_WORD_FILE_PATH = 'picovoice_models/YOUR_CUSTOM_WAKE_WORD.ppn'; // User to confirm actual .ppn filename
+const PORCUPINE_MODEL_FILE_PATH = 'picovoice_models/porcupine_params.pv';
+
+const WAKE_WORD_LABEL = 'HeyChainWhisper'; // Label for your custom wake word
+
+interface WakeWordDetectionHook {
+  isLoaded: boolean;
+  isListening: boolean;
+  error: Error | null;
+  isError: boolean;
+  startWakeWordDetection: () => Promise<void>;
+  stopWakeWordDetection: () => Promise<void>;
+  keywordDetection: any;
+}
+
+export const useWakeWordDetection = (
+  onWakeWordDetected: () => void
+): WakeWordDetectionHook => {
+  const [isMounted, setIsMounted] = useState(true);
+
+  const {
+    keywordDetection,
+    isLoaded,
+    isListening,
+    error,
+    init,
+    start,
+    stop,
+    release,
+  } = usePorcupine();
+
+  const initPorcupine = useCallback(async () => {
+    if (!PICOVOICE_ACCESS_KEY) {
+      console.error('[useWakeWordDetection] Picovoice AccessKey is not set.');
+      return;
+    }
+    try {
+      await init(
+        PICOVOICE_ACCESS_KEY,
+        [
+          {
+            publicPath: CUSTOM_WAKE_WORD_FILE_PATH,
+            label: WAKE_WORD_LABEL,
+            // sensitivity: 0.7 // Optional: Adjust sensitivity
+          },
+        ],
+        { publicPath: PORCUPINE_MODEL_FILE_PATH }
+      );
+      console.log('[useWakeWordDetection] Porcupine initialized successfully.');
+    } catch (e: any) {
+      console.error('[useWakeWordDetection] Error initializing Porcupine:', e);
+    }
+  }, [init]);
+
+  useEffect(() => {
+    setIsMounted(true);
+    initPorcupine();
+
+    return () => {
+      setIsMounted(false);
+      console.log('[useWakeWordDetection] Releasing Porcupine resources.');
+      release();
+    };
+  }, [initPorcupine, release]);
+
+  useEffect(() => {
+    if (isMounted && keywordDetection !== null && keywordDetection.label === WAKE_WORD_LABEL) {
+      console.log(`[useWakeWordDetection] Wake word '{WAKE_WORD_LABEL}' detected!`);
+      onWakeWordDetected();
+    }
+  }, [keywordDetection, onWakeWordDetected, isMounted]);
+
+  const startWakeWordDetection = useCallback(async () => {
+    if (isLoaded && !isListening) {
+      try {
+        console.log('[useWakeWordDetection] Starting wake word detection...');
+        await start();
+        console.log('[useWakeWordDetection] Wake word detection started.');
+      } catch (e: any) {
+        console.error('[useWakeWordDetection] Error starting wake word detection:', e);
+      }
+    } else if (!isLoaded) {
+        console.warn('[useWakeWordDetection] Porcupine not loaded yet, cannot start.');
+    } else if (isListening) {
+        console.warn('[useWakeWordDetection] Already listening for wake word.');
+    }
+  }, [isLoaded, isListening, start]);
+
+  const stopWakeWordDetection = useCallback(async () => {
+    if (isListening) {
+      try {
+        console.log('[useWakeWordDetection] Stopping wake word detection...');
+        await stop();
+        console.log('[useWakeWordDetection] Wake word detection stopped.');
+      } catch (e: any) {
+        console.error('[useWakeWordDetection] Error stopping wake word detection:', e);
+      }
+    }
+  }, [isListening, stop]);
+
+  return {
+    isLoaded,
+    isListening,
+    error,
+    isError: error !== null,
+    startWakeWordDetection,
+    stopWakeWordDetection,
+    keywordDetection,
+  };
+};

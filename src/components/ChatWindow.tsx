@@ -1,5 +1,5 @@
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react"; // Added useCallback
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Send, Sparkles, Mic, MicOff } from "lucide-react";
@@ -9,6 +9,9 @@ import { useAnthropic } from "@/hooks/useAnthropic";
 import { useToast } from "@/hooks/use-toast";
 import { useWebSpeech } from '@/hooks/useWebSpeech';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { useWakeWordDetection } from '@/hooks/useWakeWordDetection';
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 
 // No CHAT_HISTORY_KEY here anymore
 
@@ -46,8 +49,9 @@ const ChatWindow = ({
   const { sendMessage, isLoading } = useAnthropic();
   const { toast } = useToast();
 
+  // Web Speech API (STT/TTS)
   const {
-    isListening,
+    isListening, // This is for main STT
     startListening,
     stopListening,
     speak,
@@ -77,6 +81,72 @@ const ChatWindow = ({
     }
   });
 
+  // Wake Word Detection
+  const [wakeWordEnabled, setWakeWordEnabled] = useState(false);
+
+  const handleWakeWordDetected = useCallback(() => {
+    console.log('[ChatWindow] Wake word detected!');
+    if (!isSTTSupported) {
+      toast({ title: "Voice Input Not Supported", description: "Cannot start voice input after wake word." });
+      return;
+    }
+    if (isListening) { // from useWebSpeech - already listening for main STT
+      console.log('[ChatWindow] Already listening for STT, no action on wake word.');
+      return;
+    }
+    startListening(); // from useWebSpeech
+    // Optionally, disable wake word listening temporarily or provide other feedback
+    // setWakeWordEnabled(false); // Example: turn off wake word after detection
+  }, [isListening, startListening, isSTTSupported, toast]);
+
+  const {
+    isLoaded: isWakeWordLoaded,
+    isListening: isListeningForWakeWord,
+    error: wakeWordError,
+    startWakeWordDetection,
+    stopWakeWordDetection,
+  } = useWakeWordDetection(handleWakeWordDetected);
+
+  // Effect to start/stop wake word detection based on the toggle and main STT state
+  useEffect(() => {
+    if (wakeWordEnabled && isWakeWordLoaded) {
+      if (!isListeningForWakeWord && !isListening) { // isListening is from useWebSpeech (main STT)
+        console.log('[ChatWindow] Conditions met: Starting wake word detection.');
+        startWakeWordDetection();
+      } else if (isListeningForWakeWord && isListening) { // Main STT is active
+        console.log('[ChatWindow] Main STT active, stopping wake word detection temporarily.');
+        stopWakeWordDetection();
+      }
+    } else { // wakeWordEnabled is false OR not loaded
+      if (isListeningForWakeWord) {
+        console.log('[ChatWindow] Conditions met: Stopping wake word detection (disabled or not loaded).');
+        stopWakeWordDetection();
+      }
+    }
+  }, [
+    wakeWordEnabled,
+    isWakeWordLoaded,
+    isListeningForWakeWord,
+    isListening, // from useWebSpeech
+    startWakeWordDetection,
+    stopWakeWordDetection
+  ]);
+
+  // Effect to handle wake word errors
+  useEffect(() => {
+    if (wakeWordError) {
+      toast({
+        title: "Wake Word Error",
+        description: `Error with wake word detection: ${wakeWordError.message}. Make sure model files are in public/picovoice_models/ and the .ppn filename is correct in useWakeWordDetection.ts.`,
+        variant: "destructive",
+        duration: 10000, // Longer duration for this specific error
+      });
+      setWakeWordEnabled(false); // Disable toggle on error
+    }
+  }, [wakeWordError, toast]);
+
+
+  // STT/TTS Support Toasts (run once)
   useEffect(() => {
     if (!isSTTSupported && !localStorage.getItem('sttUnsupportedToastShown')) {
       toast({
@@ -245,7 +315,44 @@ const ChatWindow = ({
       </div>
 
       <div className="border-t border-gray-800 bg-gray-950/95 backdrop-blur-sm p-2 sm:p-4 lg:p-6">
-        <TooltipProvider>
+        <TooltipProvider> {/* This TooltipProvider was already here, good. */}
+
+        {/* Wake Word Toggle - Placed above input */}
+        <div className="flex items-center space-x-2 mb-2 sm:mb-3 max-w-4xl mx-auto justify-end pr-1"> {/* Added pr-1 for slight spacing if needed */}
+          <Label htmlFor="wake-word-toggle" className="text-xs sm:text-sm text-gray-300 cursor-pointer">
+            Enable "Hey, ChainWhisper"
+          </Label>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              {/* The Switch itself needs to be the direct child for asChild to work correctly with TooltipTrigger */}
+              <Switch
+                id="wake-word-toggle"
+                checked={wakeWordEnabled}
+                onCheckedChange={(checked) => {
+                  if (!isWakeWordLoaded && checked) {
+                    toast({
+                      title: "Wake Word Engine Not Ready",
+                      description: "Please wait for the engine to load. If this persists, check console for errors (F12) and ensure model files are present in public/picovoice_models/.",
+                      duration: 7000,
+                    });
+                  }
+                  setWakeWordEnabled(checked);
+                }}
+                disabled={!isWakeWordLoaded && !wakeWordError} // Disable if not loaded yet (unless there was an error, then it's already off)
+              />
+            </TooltipTrigger>
+            <TooltipContent side="top" align="end">
+              <p className="text-xs max-w-xs">When enabled, the app will listen for the phrase<br />"Hey, ChainWhisper" to activate voice input.<br />Your microphone will be active.</p>
+            </TooltipContent>
+          </Tooltip>
+          {/* Status indicators can be part of the flex container or positioned nearby */}
+          <div className="w-28 text-right"> {/* Fixed width container for status text to prevent layout shifts */}
+            {isListeningForWakeWord && <span className="text-xs text-orange-500">(Listening...)</span>}
+            {!isWakeWordLoaded && !wakeWordError && wakeWordEnabled && <span className="text-xs text-yellow-500">(Engine loading...)</span>}
+            {wakeWordError && <span className="text-xs text-red-500">(Error)</span>}
+          </div>
+        </div>
+
         <div className="flex gap-1.5 sm:gap-3 max-w-4xl mx-auto items-center">
           <div className="flex-1 relative">
             <Input

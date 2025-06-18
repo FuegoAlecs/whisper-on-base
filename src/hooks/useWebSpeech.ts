@@ -13,6 +13,8 @@ export const useWebSpeech = (options?: UseWebSpeechOptions) => {
   const [transcribedText, setTranscribedText] = useState('');
   const [speechRecognition, setSpeechRecognition] = useState<any>(null); // Using 'any' for SpeechRecognition for now
   const [speechSynthesis, setSpeechSynthesis] = useState<any>(null); // Using 'any' for SpeechSynthesis for now
+  const [voices, setVoices] = useState<SpeechSynthesisVoice[]>([]);
+  const [selectedVoice, setSelectedVoice] = useState<SpeechSynthesisVoice | null>(null);
 
   useEffect(() => {
     // Initialize SpeechRecognition
@@ -62,9 +64,33 @@ export const useWebSpeech = (options?: UseWebSpeechOptions) => {
 
     // Initialize SpeechSynthesis
     if ('speechSynthesis' in window) {
-      setSpeechSynthesis(window.speechSynthesis);
+      const synth = window.speechSynthesis;
+      setSpeechSynthesis(synth);
+
+      const loadVoices = () => {
+        const availableVoices = synth.getVoices();
+        console.log('[useWebSpeech] loadVoices: Available voices:', availableVoices);
+        if (availableVoices.length > 0) {
+          setVoices(availableVoices);
+          // Attempt to select an English voice, preferably a local one
+          const enVoice = availableVoices.find(voice => voice.lang.startsWith('en') && voice.localService) ||
+                          availableVoices.find(voice => voice.lang.startsWith('en')) ||
+                          availableVoices[0];
+          setSelectedVoice(enVoice);
+          console.log('[useWebSpeech] loadVoices: Selected voice:', enVoice);
+        }
+      };
+
+      loadVoices();
+      if (synth.onvoiceschanged !== undefined) {
+        synth.onvoiceschanged = loadVoices;
+        console.log('[useWebSpeech] useEffect: voiceschanged event listener attached.');
+      } else {
+         console.log('[useWebSpeech] useEffect: voiceschanged event not supported, voices might be preloaded or issue if not.');
+      }
+
     } else {
-      console.warn('SpeechSynthesis API not supported in this browser.');
+      console.warn('[useWebSpeech] SpeechSynthesis API not supported in this browser.');
     }
 
     return () => {
@@ -72,11 +98,17 @@ export const useWebSpeech = (options?: UseWebSpeechOptions) => {
       if (speechRecognition) {
         speechRecognition.stop();
       }
-      if (speechSynthesis) {
-        speechSynthesis.cancel();
+      // Get a reference to the current speechSynthesis state
+      const currentSynth = window.speechSynthesis;
+      if (currentSynth) {
+        currentSynth.cancel();
+        if (currentSynth.onvoiceschanged !== undefined) {
+          currentSynth.onvoiceschanged = null; // Clean up listener
+          console.log('[useWebSpeech] useEffect cleanup: voiceschanged event listener removed.');
+        }
       }
     };
-  }, [options]);
+  }, [options]); // Removed speechSynthesis from dependency array as we set it here.
 
   const startListening = useCallback(() => {
     if (speechRecognition && !isListening) {
@@ -103,39 +135,87 @@ export const useWebSpeech = (options?: UseWebSpeechOptions) => {
       speechRecognition.stop();
       // onend will set isListening to false
     }
-  }, [speechRecognition, isListening]);
+  }, [speechRecognition, isListening, options]);
 
   const speak = useCallback((text: string, lang: string = 'en-US') => {
-    if (speechSynthesis && text) {
-      if (speechSynthesis.speaking) {
-        speechSynthesis.cancel(); // Stop any current speech before starting new
+    console.log('[useWebSpeech] speak: Called with text:', text, 'Lang:', lang);
+    console.log('[useWebSpeech] speak: Current selected voice:', selectedVoice);
+
+    if (!speechSynthesis) {
+      console.warn('[useWebSpeech] speak: SpeechSynthesis not available. Cannot speak.');
+      if (options?.onTTSError) {
+        options.onTTSError(new Error('SpeechSynthesis not available.'));
       }
-      const utterance = new SpeechSynthesisUtterance(text);
-      utterance.lang = lang;
-      utterance.onstart = () => {
-        setIsSpeaking(true);
-      };
-      utterance.onend = () => {
-        setIsSpeaking(false);
-        if (options?.onTTSFinisH) {
-          options.onTTSFinisH();
-        }
-      };
-      utterance.onerror = (event: any) => {
-        console.error('Speech synthesis error:', event.error);
-        setIsSpeaking(false);
-        if (options?.onTTSError) {
-          options.onTTSError(event.error);
-        }
-      };
-      speechSynthesis.speak(utterance);
-    } else if (!speechSynthesis) {
-        console.warn('SpeechSynthesis not available.');
-        if (options?.onTTSError) {
-            options.onTTSError(new Error('SpeechSynthesis not available.'));
-        }
+      return;
     }
-  }, [speechSynthesis, options]);
+
+    if (!text) {
+      console.warn('[useWebSpeech] speak: No text provided to speak.');
+      if (options?.onTTSError) {
+        options.onTTSError(new Error('No text provided to speak.'));
+      }
+      return;
+    }
+    // It's possible selectedVoice is null if voices haven't loaded yet or no suitable voice found
+    if (voices.length === 0 || !selectedVoice) {
+      console.warn('[useWebSpeech] speak: Voices not loaded or no voice selected yet. Attempting to speak with browser default.');
+      // Optionally, you could queue the message or notify the user,
+      // but for now, we'll let it try with the browser's absolute default.
+      // Or, if an error occurs consistently here, this is a point of failure.
+    }
+
+    console.log('[useWebSpeech] speak: SpeechSynthesis instance:', speechSynthesis);
+
+    if (speechSynthesis.speaking) {
+      console.log('[useWebSpeech] speak: SpeechSynthesis is currently speaking. Cancelling previous speech.');
+      speechSynthesis.cancel(); // Stop any current speech before starting new
+    }
+
+    const utterance = new SpeechSynthesisUtterance(text);
+    // Set language on utterance - this is still important
+    utterance.lang = lang;
+
+    // Explicitly set the voice if one is selected
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log('[useWebSpeech] speak: Using voice:', selectedVoice.name, selectedVoice.lang);
+    } else {
+      console.warn('[useWebSpeech] speak: No specific voice selected, using browser default for lang:', lang);
+    }
+
+    utterance.onstart = () => {
+      console.log('[useWebSpeech] speak: Utterance started.');
+      setIsSpeaking(true);
+    };
+
+    utterance.onend = () => {
+      console.log('[useWebSpeech] speak: Utterance ended.');
+      setIsSpeaking(false);
+      if (options?.onTTSFinisH) {
+        options.onTTSFinisH();
+      }
+    };
+
+    utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
+      console.error('[useWebSpeech] speak: Utterance error.', event);
+      setIsSpeaking(false);
+      if (options?.onTTSError) {
+        options.onTTSError(event.error || new Error(`SpeechSynthesisUtterance error: ${event.error}`));
+      }
+    };
+
+    try {
+      console.log('[useWebSpeech] speak: Attempting to speak utterance...');
+      speechSynthesis.speak(utterance);
+      console.log('[useWebSpeech] speak: speechSynthesis.speak() called.');
+    } catch (e: any) {
+      console.error('[useWebSpeech] speak: Error calling speechSynthesis.speak():', e);
+      setIsSpeaking(false);
+      if (options?.onTTSError) {
+        options.onTTSError(e);
+      }
+    }
+  }, [speechSynthesis, options, setIsSpeaking, selectedVoice, voices]);
 
   const cancelSpeaking = useCallback(() => {
     if (speechSynthesis && isSpeaking) {
