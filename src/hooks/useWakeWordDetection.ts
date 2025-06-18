@@ -35,12 +35,30 @@ export const useWakeWordDetection = (
     release,
   } = usePorcupine();
 
+  // Log the error from usePorcupine when it changes
+  useEffect(() => {
+    if (error) {
+      console.error('[useWakeWordDetection] Detailed Porcupine Hook Error:', error);
+      // You can log specific properties if known, e.g., error.name, error.message, error.stack
+      // For WebAssembly errors, sometimes more info is in error.toString() or nested properties
+      if (error.message) {
+        console.error('[useWakeWordDetection] Error Message:', error.message);
+      }
+      if (error.stack) {
+        console.error('[useWakeWordDetection] Error Stack:', error.stack);
+      }
+    }
+  }, [error]);
+
   const initPorcupine = useCallback(async () => {
     if (!PICOVOICE_ACCESS_KEY) {
       console.error('[useWakeWordDetection] Picovoice AccessKey is not set.');
       return;
     }
     try {
+      console.log(`[useWakeWordDetection] Initializing Porcupine with AccessKey: ${PICOVOICE_ACCESS_KEY.substring(0, 5)}...`);
+      console.log(`[useWakeWordDetection] Custom PPN Path: ${CUSTOM_WAKE_WORD_FILE_PATH}`);
+      console.log(`[useWakeWordDetection] Model PV Path: ${PORCUPINE_MODEL_FILE_PATH}`);
       await init(
         PICOVOICE_ACCESS_KEY,
         [
@@ -52,11 +70,26 @@ export const useWakeWordDetection = (
         ],
         { publicPath: PORCUPINE_MODEL_FILE_PATH }
       );
-      console.log('[useWakeWordDetection] Porcupine initialized successfully.');
+      if (isMounted) { // Check if component is still mounted
+         console.log('[useWakeWordDetection] Porcupine initialized successfully (according to init call completion).');
+      }
     } catch (e: any) {
-      console.error('[useWakeWordDetection] Error initializing Porcupine:', e);
+      // This catch block might catch errors from the init call itself,
+      // but the `error` state from the usePorcupine hook is often more informative
+      // for internal Porcupine errors.
+      console.error('[useWakeWordDetection] Error caught during init() call for Porcupine:', e);
+      if (e.message) {
+        console.error('[useWakeWordDetection] Init Error Message:', e.message);
+      }
+      if (e.stack) {
+        console.error('[useWakeWordDetection] Init Error Stack:', e.stack);
+      }
+       if (isMounted && !error) { // If hook's error state isn't set yet, this one is primary
+            // This part might be tricky as the hook's error state might update slightly after this catch.
+            // The useEffect above is more reliable for the hook's own error state.
+       }
     }
-  }, [init]);
+  }, [init, isMounted]);
 
   useEffect(() => {
     setIsMounted(true);
